@@ -1,0 +1,45 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1.0.14": "1.0.14",
+    "jsr:@std/internal@^1.0.10": "1.0.14"
+  },
+  "jsr": {
+    "@std/assert@1.0.14": {
+      "integrity": "68d0d4a43b365abc927f45a9b85c639ea18a9fab96ad92281e493e4ed84abaa4",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@expo/vector-icons@^15.0.3",
+        "npm:@react-navigation/native@^7.1.8",
+        "npm:@types/react@19.1",
+        "npm:expo-constants@~18.0.13",
+        "npm:expo-font@~14.0.12",
+        "npm:expo-linking@~8.0.12",
+        "npm:expo-router@~6.0.24",
+        "npm:expo-splash-screen@~31.0.13",
+        "npm:expo-status-bar@~3.0.9",
+        "npm:expo-web-browser@~15.0.11",
+        "npm:expo@~54.0.36",
+        "npm:react-dom@19.1.0",
+        "npm:react-native-reanimated@~4.1.1",
+        "npm:react-native-safe-area-context@5.6",
+        "npm:react-native-screens@4.16",
+        "npm:react-native-web@0.21",
+        "npm:react-native-worklets@0.5.1",
+        "npm:react-native@0.81.5",
+        "npm:react-test-renderer@19.1.0",
+        "npm:react@19.1.0",
+        "npm:typescript@~5.9.2"
+      ]
+    }
+  }
+}

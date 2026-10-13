@@ -37,6 +37,11 @@ async function createBaseDatabase(): Promise<PGlite> {
       AS $$
         SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
       $$;
+    CREATE FUNCTION auth.role() RETURNS text
+      LANGUAGE sql STABLE
+      AS $$
+        SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')
+      $$;
     CREATE SCHEMA storage;
     CREATE TABLE storage.buckets (
       id text PRIMARY KEY,
@@ -210,6 +215,124 @@ Deno.test("user metadata cannot bypass the username requirement or mark an owner
       rejected,
       true,
       "untrusted user metadata cannot bypass signup checks",
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+Deno.test("admins get protected access while owner stays a unique role", async () => {
+  const db = await createDatabase();
+  const adminId = "00000000-0000-4000-8000-000000000004";
+  try {
+    await addAuthUser(db, ownerId, ownerEmail, {}, {
+      dotaznicek_admin_owner: true,
+    });
+    await addAuthUser(db, adminId, "admin@dotaznicek.local", {
+      username: "admin",
+    }, { role: "admin" });
+    await addAuthUser(
+      db,
+      userId,
+      "ordinary@example.test",
+      { username: "ordinary", role: "admin" },
+    );
+    await db.query("SELECT public.bootstrap_admin_owner($1::uuid)", [ownerId]);
+
+    await db.query(
+      "SELECT set_config('request.jwt.claim.role', 'service_role', false)",
+    );
+    await db.query("SET ROLE service_role");
+    await db.query("SELECT public.grant_admin_role($1::uuid)", [adminId]);
+    await db.query("RESET ROLE");
+
+    const adminRole = await db.query<{ role: string }>(
+      "SELECT role FROM private.user_roles WHERE user_id = $1::uuid",
+      [adminId],
+    );
+    assertEqual(adminRole.rows[0]?.role, "admin", "seeded admin role");
+
+    await db.query("SELECT set_config('request.jwt.claim.sub', $1, false)", [
+      adminId,
+    ]);
+    await db.query("SET ROLE authenticated");
+    const visibleToAdmin = await db.query<{ id: string }>(
+      "SELECT id FROM public.profiles WHERE id = $1::uuid",
+      [userId],
+    );
+    assertEqual(
+      visibleToAdmin.rows.length,
+      1,
+      "admin can read another user's protected profile",
+    );
+    await db.query("RESET ROLE");
+
+    await db.query("SELECT set_config('request.jwt.claim.sub', $1, false)", [
+      userId,
+    ]);
+    await db.query("SET ROLE authenticated");
+    const visibleToOrdinaryUser = await db.query<{ id: string }>(
+      "SELECT id FROM public.profiles WHERE id = $1::uuid",
+      [adminId],
+    );
+    assertEqual(
+      visibleToOrdinaryUser.rows.length,
+      0,
+      "user-editable metadata does not grant admin access",
+    );
+    await db.query(
+      "SELECT set_config('request.jwt.claim.role', 'service_role', false)",
+    );
+    await db.query("SET ROLE service_role");
+    let userMetadataAdminDenied = false;
+    try {
+      await db.query("SELECT public.grant_admin_role($1::uuid)", [userId]);
+    } catch {
+      userMetadataAdminDenied = true;
+    }
+    assertEqual(
+      userMetadataAdminDenied,
+      true,
+      "user-editable metadata cannot be promoted by the role RPC",
+    );
+    await db.query("RESET ROLE");
+
+    await db.query(
+      "SELECT set_config('request.jwt.claim.role', 'authenticated', false)",
+    );
+    let roleAssignmentDenied = false;
+    try {
+      await db.query("SELECT public.grant_admin_role($1::uuid)", [userId]);
+    } catch {
+      roleAssignmentDenied = true;
+    }
+    assertEqual(
+      roleAssignmentDenied,
+      true,
+      "authenticated users cannot assign admin roles",
+    );
+    await db.query("RESET ROLE");
+
+    const ownerRole = await db.query<{ role: string }>(
+      "SELECT role FROM private.user_roles WHERE user_id = $1::uuid",
+      [ownerId],
+    );
+    assertEqual(ownerRole.rows[0]?.role, "owner", "owner role is preserved");
+    const ownerLookup = await db.query<{ id: string | null }>(
+      "SELECT public.admin_owner_user_id() AS id",
+    );
+    assertEqual(
+      ownerLookup.rows[0].id,
+      ownerId,
+      "singleton owner is unchanged",
+    );
+    const usernameLogin = await db.query<{ email: string | null }>(
+      "SELECT public.login_email_for_username('admin') AS email",
+    );
+    assertEqual(
+      usernameLogin.rows[0].email,
+      "admin@dotaznicek.local",
+      "admin nickname still resolves to its Auth email",
     );
   } finally {
     await db.close();

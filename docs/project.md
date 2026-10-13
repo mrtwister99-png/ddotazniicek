@@ -27,7 +27,8 @@ Primární použití je sběr zpětné vazby od kamarádů. Aplikace ale musí b
 - Owner účet se automaticky nevytváří jen při otevření aplikace. Tajný kód se
   přijímá pouze při prázdném identifikátoru; pokud je identifikátor vyplněný,
   probíhá běžné přihlášení e-mailem/přezdívkou a heslem.
-- Jen owner může spravovat uživatele, skupiny, šablony, rozesílky, výsledky a body.
+- Owner a účty s chráněnou rolí `admin` mohou spravovat uživatele, skupiny,
+  šablony, rozesílky, výsledky a body. Owner zůstává jediný a samostatný účet.
 
 ### Běžný uživatel
 
@@ -180,3 +181,12 @@ Sunday at 03:00 UTC. Follow
 for the read-only schema preflight, Vault setup, operator-controlled enablement,
 and reversible unschedule procedure. Neither migration is applied, and no
 cleanup is invoked, as part of local implementation or testing.
+
+## Local administrator seed
+
+The initial application admin is provisioned explicitly with
+`npm run seed:admin`; see
+[`docs/runbooks/admin-seed.md`](./runbooks/admin-seed.md). The script uses
+Supabase Auth Admin API for password handling and a service-role-only RPC to
+assign the protected database role. Do not expose its local service-role key
+or password through Expo environment variables.
