@@ -140,3 +140,30 @@ nebo Dashboard → Výsledky → rozesílka → odpověď uživatele
 
 - `welcome`
 - `login`
+
+## 7. Forward migration for the mobile client
+
+The mobile-support schema is added only in
+`supabase/migrations/20261013000000_mobile_client_support.sql`. The applied
+initial migration remains unchanged. Local database tests apply app-schema
+migrations in timestamp order and exclude the optional `pg_cron` scheduling
+migration.
+
+Before an operator applies the forward migration, compare the live schema
+read-only with the repository's expected migration contract and stop if there
+is drift. The migration checks for users with more than one explicit folder
+membership before adding the unique membership index. If it finds a conflict,
+it aborts without changing memberships; an operator must review and resolve the
+conflicting memberships explicitly before retrying.
+
+The migration adds a constrained template category (`questionnaire`,
+`advertisement`, or `special_questionnaire`), durable profile/folder favorites,
+and the owner-only `move_users_to_group` RPC. A null destination removes
+explicit memberships and places selected users in the virtual `Obecná` folder.
+Non-owners cannot change profile favorites or use the RPC to move users.
+
+Deleting an Auth user cascades through that user's memberships, push tokens,
+deliveries, drafts, responses, response edits, and score records. Templates,
+groups, and other users' deliveries and response history are preserved. The
+mobile implementation and local migration tests do not apply or deploy these
+changes to the production Supabase project.
