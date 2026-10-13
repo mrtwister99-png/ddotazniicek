@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.send-ephemeral-notification]
 verify_jwt = true
+
+[functions.cleanup-inactive-users]
+verify_jwt = true

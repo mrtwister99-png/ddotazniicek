@@ -167,3 +167,16 @@ deliveries, drafts, responses, response edits, and score records. Templates,
 groups, and other users' deliveries and response history are preserved. The
 mobile implementation and local migration tests do not apply or deploy these
 changes to the production Supabase project.
+
+## Scheduled inactive-account cleanup
+
+The weekly cleanup is scheduled only by
+`supabase/migrations/20261013000100_schedule_inactive_user_cleanup.sql`. It
+requires the mobile-support cascade migration, `pg_cron`, `pg_net`, Supabase
+Vault, and the documented Vault deployment attestation for a deployed
+`verify_jwt = true` Edge Function. The schedule invokes the function every
+Sunday at 03:00 UTC. Follow
+[`docs/runbooks/inactive-account-cleanup.md`](./runbooks/inactive-account-cleanup.md)
+for the read-only schema preflight, Vault setup, operator-controlled enablement,
+and reversible unschedule procedure. Neither migration is applied, and no
+cleanup is invoked, as part of local implementation or testing.
