@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.leaderboard]
 verify_jwt = true
+
+[functions.send-ephemeral-notification]
+verify_jwt = true
