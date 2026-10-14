@@ -41,6 +41,9 @@ After seeding, sign in through the existing login screen with either
 The owner remains a separate singleton and keeps its existing blank-identifier
 secret login and owner-specific notification routing.
 
+If owner bootstrap has to free the reserved `admin` username, the existing
+account remains intact and can sign in with `admin_old` instead.
+
 The database role migration
 `supabase/migrations/20261013000200_admin_role_seed.sql` must be applied to the
 intended project by the operator before the seed RPC can succeed. Compare the

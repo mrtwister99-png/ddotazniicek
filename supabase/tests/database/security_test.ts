@@ -8,6 +8,8 @@ const initialMigrationUrl = new URL(
 );
 const migrationsDirectoryUrl = new URL("../../migrations/", import.meta.url);
 const mobileSupportMigrationName = "20261013000000_mobile_client_support.sql";
+const ownerProfileMigrationName =
+  "20261014000000_repair_owner_auth_profiles.sql";
 
 const ownerId = "00000000-0000-4000-8000-000000000001";
 const ownerEmail = `admin-${"a".repeat(64)}@dotaznicek.invalid`;
@@ -175,6 +177,100 @@ Deno.test("migration creates owner, response-version, and rate-limit primitives"
   }
 });
 
+Deno.test("auth trigger creates profiles without assigning generated columns", async () => {
+  const db = await createDatabase();
+  const newUserId = "00000000-0000-4000-8000-000000000005";
+  try {
+    await addAuthUser(
+      db,
+      newUserId,
+      `admin-${"c".repeat(64)}@dotaznicek.invalid`,
+      { display_name: "Bootstrap Owner" },
+      { dotaznicek_admin_owner: true },
+    );
+
+    const createdProfile = await db.query<{
+      username: string | null;
+      username_normalized: string | null;
+      role: string;
+      is_owner: boolean;
+      display_name: string | null;
+      username_normalized_generated: string;
+    }>(
+      `SELECT profile.username,
+              profile.username_normalized,
+              profile.role,
+              profile.is_owner,
+              profile.display_name,
+              attribute.attgenerated AS username_normalized_generated
+       FROM public.profiles profile
+       JOIN pg_attribute attribute
+         ON attribute.attrelid = 'public.profiles'::regclass
+        AND attribute.attname = 'username_normalized'
+       WHERE profile.id = $1::uuid`,
+      [newUserId],
+    );
+    assertEqual(createdProfile.rows.length, 1, "trigger-created profile");
+    assertEqual(
+      createdProfile.rows[0].username,
+      "user_00000000",
+      "missing username gets a generated fallback",
+    );
+    assertEqual(
+      createdProfile.rows[0].username_normalized,
+      "user_00000000",
+      "normalized username is computed by the database",
+    );
+    assertEqual(createdProfile.rows[0].role, "user", "new users are not admins");
+    assertEqual(
+      createdProfile.rows[0].is_owner,
+      false,
+      "new users are not marked as owner",
+    );
+    assertEqual(
+      createdProfile.rows[0].display_name,
+      "Bootstrap Owner",
+      "display name is copied from Auth metadata",
+    );
+    assertEqual(
+      createdProfile.rows[0].username_normalized_generated,
+      "s",
+      "username_normalized remains a stored generated column",
+    );
+
+    await db.query("SELECT public.bootstrap_admin_owner($1::uuid)", [
+      newUserId,
+    ]);
+    const promotedProfile = await db.query<{
+      username: string;
+      role: string;
+      is_owner: boolean;
+    }>(
+      `SELECT username, role, is_owner
+       FROM public.profiles
+       WHERE id = $1::uuid`,
+      [newUserId],
+    );
+    assertEqual(promotedProfile.rows[0].username, "admin_owner", "owner username");
+    assertEqual(promotedProfile.rows[0].role, "admin", "owner profile role");
+    assertEqual(promotedProfile.rows[0].is_owner, true, "owner profile flag");
+  } finally {
+    await db.close();
+  }
+});
+
+Deno.test("owner profile migration is safe to apply more than once", async () => {
+  const db = await createDatabase();
+  try {
+    const migration = await Deno.readTextFile(
+      new URL(ownerProfileMigrationName, migrationsDirectoryUrl),
+    );
+    await db.exec(migration);
+  } finally {
+    await db.close();
+  }
+});
+
 Deno.test("migration leaves managed Storage tables unchanged", async () => {
   const sql = await Deno.readTextFile(initialMigrationUrl);
   if (/\bstorage\s*\.\s*(objects|buckets)\b/i.test(sql)) {
@@ -194,27 +290,32 @@ Deno.test("migration leaves managed Storage tables unchanged", async () => {
   }
 });
 
-Deno.test("user metadata cannot bypass the username requirement or mark an owner", async () => {
+Deno.test("user metadata cannot mark a profile as owner", async () => {
   const db = await createDatabase();
   try {
-    let rejected = false;
-    try {
-      await db.query(
-        `INSERT INTO auth.users (id, email, raw_user_meta_data)
-         VALUES ($1::uuid, $2, $3::jsonb)`,
-        [
-          "00000000-0000-4000-8000-000000000004",
-          `admin-${"b".repeat(64)}@dotaznicek.invalid`,
-          JSON.stringify({ dotaznicek_admin_owner: true }),
-        ],
-      );
-    } catch {
-      rejected = true;
-    }
+    const untrustedUserId = "00000000-0000-4000-8000-000000000004";
+    await db.query(
+      `INSERT INTO auth.users (id, email, raw_user_meta_data)
+       VALUES ($1::uuid, $2, $3::jsonb)`,
+      [
+        untrustedUserId,
+        `admin-${"b".repeat(64)}@dotaznicek.invalid`,
+        JSON.stringify({ dotaznicek_admin_owner: true }),
+      ],
+    );
+    const profile = await db.query<{ role: string; is_owner: boolean }>(
+      `SELECT role, is_owner FROM public.profiles WHERE id = $1::uuid`,
+      [untrustedUserId],
+    );
     assertEqual(
-      rejected,
-      true,
-      "untrusted user metadata cannot bypass signup checks",
+      profile.rows[0].role,
+      "user",
+      "untrusted metadata cannot assign the profile role",
+    );
+    assertEqual(
+      profile.rows[0].is_owner,
+      false,
+      "untrusted metadata cannot mark the profile as owner",
     );
   } finally {
     await db.close();
@@ -331,8 +432,16 @@ Deno.test("admins get protected access while owner stays a unique role", async (
     );
     assertEqual(
       usernameLogin.rows[0].email,
+      null,
+      "owner username does not collide with a pre-existing admin nickname",
+    );
+    const renamedAdminLogin = await db.query<{ email: string | null }>(
+      "SELECT public.login_email_for_username('admin_old') AS email",
+    );
+    assertEqual(
+      renamedAdminLogin.rows[0].email,
       "admin@dotaznicek.local",
-      "admin nickname still resolves to its Auth email",
+      "the displaced admin nickname remains usable as admin_old",
     );
   } finally {
     await db.close();
