@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text, View } from '@/components/Themed';
@@ -37,6 +38,7 @@ export default function LoginScreen() {
   const passwordInput = useRef<TextInput>(null);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<LoginFeedback | null>(null);
 
@@ -122,7 +124,7 @@ export default function LoginScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled">
@@ -155,19 +157,37 @@ export default function LoginScreen() {
 
             <View style={styles.field}>
               <Text style={styles.label}>Heslo</Text>
-              <TextInput
-                ref={passwordInput}
-                accessibilityLabel="Heslo"
-                autoComplete="current-password"
-                onChangeText={setPassword}
-                onSubmitEditing={handleLogin}
-                placeholder="Zadejte heslo"
-                placeholderTextColor={colorScheme === 'dark' ? '#aaa' : '#666'}
-                returnKeyType="done"
-                secureTextEntry
-                style={[styles.input, { borderColor: theme.tabIconDefault, color: theme.text }]}
-                value={password}
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  ref={passwordInput}
+                  accessibilityLabel="Heslo"
+                  autoComplete="current-password"
+                  onChangeText={setPassword}
+                  onSubmitEditing={handleLogin}
+                  placeholder="Zadejte heslo"
+                  placeholderTextColor={colorScheme === 'dark' ? '#aaa' : '#666'}
+                  returnKeyType="done"
+                  secureTextEntry={!isPasswordVisible}
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    { borderColor: theme.tabIconDefault, color: theme.text },
+                  ]}
+                  value={password}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Zobrazit heslo podržením"
+                  onPressIn={() => setIsPasswordVisible(true)}
+                  onPressOut={() => setIsPasswordVisible(false)}
+                  style={styles.passwordVisibilityButton}>
+                  <Ionicons
+                    name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color={theme.text}
+                  />
+                </Pressable>
+              </View>
             </View>
 
             <Pressable
@@ -251,6 +271,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 52,
     paddingHorizontal: 14,
+  },
+  passwordInputContainer: {
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 56,
+  },
+  passwordVisibilityButton: {
+    alignItems: 'center',
+    height: 48,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 2,
+    width: 48,
   },
   hint: {
     fontSize: 14,

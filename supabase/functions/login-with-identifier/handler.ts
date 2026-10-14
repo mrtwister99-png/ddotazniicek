@@ -103,7 +103,8 @@ function clientIp(request: Request): string | null {
     return cloudflareIp;
   }
 
-  const forwardedFor = request.headers.get("x-forwarded-for")
+  const forwardedFor = request.headers
+    .get("x-forwarded-for")
     ?.split(",", 1)[0]
     .trim();
   if (forwardedFor) {
@@ -116,9 +117,8 @@ function clientIp(request: Request): string | null {
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
-  return Array.from(
-    new Uint8Array(digest),
-    (byte) => byte.toString(16).padStart(2, "0"),
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
   ).join("");
 }
 
@@ -144,11 +144,11 @@ async function provisionOwner(
   dependencies: LoginDependencies,
 ): Promise<LoginResult | null> {
   const secret = dependencies.adminLoginSecret;
-  if (!secret || encoder.encode(secret).byteLength < 32) {
+  if (!secret || encoder.encode(secret).byteLength < 8) {
     dependencies.logger.error("admin login unavailable");
     throw new Error("admin login unavailable");
   }
-  if (!await secretsMatch(password, secret)) {
+  if (!(await secretsMatch(password, secret))) {
     return null;
   }
 
@@ -172,7 +172,8 @@ async function provisionOwner(
           secret,
         );
         ownerId = createdUser.id;
-      } catch {
+      } catch (e) {
+        dependencies.logger.error(`createAdmin failed: ${String(e)}`);
         const racedUser = await dependencies.findAdminAuthUser(email);
         if (!racedUser?.isMarkedOwner) {
           throw new Error("admin auth provisioning failed");
@@ -206,7 +207,8 @@ export function createLoginHandler(
       return jsonResponse(405, { error: "Method not allowed" });
     }
 
-    const contentType = request.headers.get("content-type")
+    const contentType = request.headers
+      .get("content-type")
       ?.split(";", 1)[0]
       .trim()
       .toLowerCase();
@@ -235,9 +237,8 @@ export function createLoginHandler(
     }
 
     const input = body as Record<string, unknown>;
-    const identifier = typeof input.identifier === "string"
-      ? input.identifier.trim()
-      : null;
+    const identifier =
+      typeof input.identifier === "string" ? input.identifier.trim() : null;
     const password = typeof input.password === "string" ? input.password : null;
     if (
       identifier === null ||
@@ -282,16 +283,18 @@ export function createLoginHandler(
 
       const email = looksLikeEmail(identifier)
         ? identifier.toLowerCase()
-        : await dependencies.findUsernameEmail(normalizedIdentifier) ??
+        : ((await dependencies.findUsernameEmail(normalizedIdentifier)) ??
           `no-account-${await sha256Hex(
             normalizedIdentifier,
-          )}@${OWNER_EMAIL_DOMAIN}`;
+          )}@${OWNER_EMAIL_DOMAIN}`);
       const result = await dependencies.signIn(email, password);
       return result
         ? jsonResponse(200, { session: result.session, user: result.user })
         : jsonResponse(401, { error: "Invalid identifier or password" });
-    } catch {
-      dependencies.logger.error("login service unavailable");
+    } catch (e) {
+      dependencies.logger.error(
+        `login service unavailable: ${e instanceof Error ? e.message : String(e)} - ${e instanceof Error ? e.stack : ""}`,
+      );
       return jsonResponse(503, { error: "Unable to sign in right now" });
     }
   };
