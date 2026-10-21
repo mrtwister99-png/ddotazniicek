@@ -8,11 +8,13 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { isAdminUser, setAuthSession } from '@/lib/auth-session';
 
 type LoginFeedback = {
   type: 'error' | 'success';
@@ -33,6 +35,7 @@ function isLoginResponse(value: unknown): value is { session: object; user: obje
 }
 
 export default function LoginScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const passwordInput = useRef<TextInput>(null);
@@ -113,11 +116,10 @@ export default function LoginScreen() {
       return;
     }
 
-    setFeedback({
-      type: 'success',
-      message: 'Přihlášení proběhlo úspěšně. Relace se zatím neukládá.',
-    });
+    // Uložíme session do paměti a pošleme uživatele do správného menu (admin / uživatel).
+    setAuthSession(result);
     setIsSubmitting(false);
+    router.replace(isAdminUser(result.user) ? '/admin' : '/user');
   };
 
   return (
@@ -203,6 +205,14 @@ export default function LoginScreen() {
               <Text style={styles.buttonText}>
                 {isSubmitting ? 'Přihlašuji…' : 'Přihlásit se'}
               </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSubmitting}
+              onPress={() => router.push('/register')}
+              style={[styles.secondaryButton, { borderColor: '#0F766E' }]}>
+              <Text style={styles.secondaryButtonText}>Vytvořit účet</Text>
             </Pressable>
 
             {feedback ? (
@@ -303,6 +313,19 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    marginTop: 12,
+    minHeight: 52,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
