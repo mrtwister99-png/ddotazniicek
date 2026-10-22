@@ -16,7 +16,8 @@ export function usePushRouting(onEphemeral: (deliveryId: string) => void) {
     Notifications.getLastNotificationResponseAsync().then((last: any) => {
       if (!last) return;
       const data = last.notification.request.content.data as any;
-      const deliveryId = data?.deliveryId;
+      const url = (data?.url as string) || "";
+      const deliveryId = data?.deliveryId || url.split("/").pop();
       if (deliveryId) onEphemeral(deliveryId);
     });
     return () => sub.remove();

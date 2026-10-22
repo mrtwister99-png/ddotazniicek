@@ -12,9 +12,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BrutalCard } from "@/components/BrutalCard";
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
+import Colors, { FONTS, NEO } from "@/constants/Colors";
 import { errorMessage } from "@/lib/admin-api";
 import {
   loadDeliveryDetail,
@@ -156,7 +157,9 @@ export default function UserHomeScreen() {
     }
     setIsSubmitting(true);
     try {
-      await submitResponse(ephemeralTask.id, answers);
+      // pro global-xxx pouzij real deliveryId z detailu
+      const realId = ephemeralDetail?.deliveryId ?? ephemeralTask.id;
+      await submitResponse(realId, answers);
       setIsEphemeralVisible(false);
       setEphemeralTask(null);
       setEphemeralDetail(null);
@@ -212,26 +215,61 @@ export default function UserHomeScreen() {
               );
             }
             return (
-              <Pressable
+              <BrutalCard
                 key={task.id}
-                onPress={() => router.push(`/user/dotaznik/${task.id}` as any)}
-                accessible
-                accessibilityLabel={`${task.kind === "D" ? "Dotazník" : "Reklama"} pozice ${pos}: ${task.title} za ${task.points} bodů`}
-                style={[
-                  styles.tile,
-                  size,
-                  { backgroundColor: KIND_COLOR[task.kind] },
-                ]}
+                bg={KIND_COLOR[task.kind]}
+                borderColor={NEO.black}
+                rotate={pos % 2 === 0 ? "1deg" : "-1.2deg"}
+                style={[size, { padding: 0 }]}
               >
-                <Text style={styles.tileKind}>{task.kind}</Text>
-                <Text numberOfLines={2} style={styles.tileTitle}>
-                  {task.title}
-                </Text>
-                <View style={styles.pointsBadge}>
-                  <Text style={styles.pointsBadgeText}>{task.points}b</Text>
-                </View>
-                <Text style={styles.tilePos}>{pos}</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() =>
+                    router.push(`/user/dotaznik/${task.id}` as any)
+                  }
+                  accessible
+                  accessibilityLabel={`${task.kind === "D" ? "Dotazník" : "Reklama"} pozice ${pos}: ${task.title} za ${task.points} bodů`}
+                  style={[
+                    styles.tile,
+                    size,
+                    { backgroundColor: KIND_COLOR[task.kind], borderWidth: 0 },
+                  ]}
+                >
+                  <Text style={[styles.tileKind, FONTS.brutalTitle]}>
+                    {task.kind}
+                  </Text>
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.tileTitle, FONTS.brutalTitle]}
+                  >
+                    {task.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.pointsBadge,
+                      {
+                        borderWidth: 2,
+                        borderColor: "#000",
+                        borderRadius: 0,
+                        backgroundColor: NEO.yellow,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.pointsBadgeText,
+                        {
+                          color: "#000",
+                          fontFamily: "SpaceMono-Regular",
+                          fontWeight: "900",
+                        },
+                      ]}
+                    >
+                      {task.points}b
+                    </Text>
+                  </View>
+                  <Text style={[styles.tilePos, FONTS.mono]}>{pos}</Text>
+                </Pressable>
+              </BrutalCard>
             );
           })}
         </View>

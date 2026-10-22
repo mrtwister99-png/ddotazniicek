@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
+import Colors, { NEO } from "@/constants/Colors";
 import {
   createDeliveries,
   createFolder,
@@ -30,9 +30,9 @@ import {
   setSelectedUserIds,
   useSelectionStore,
 } from "@/lib/selection-store";
+import * as Haptics from "expo-haptics";
 
 type Section = { id: string | null; name: string; members: Person[] };
-const GREEN = "#22C55E";
 
 function Check({
   checked,
@@ -48,19 +48,28 @@ function Check({
       accessibilityRole="checkbox"
       accessibilityLabel={label}
       accessibilityState={{ checked }}
-      hitSlop={6}
-      onPress={onPress}
+      hitSlop={8}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onPress();
+      }}
       style={styles.checkHit}
     >
-      <View
-        style={[
-          styles.check,
-          checked && { backgroundColor: GREEN, borderColor: GREEN },
-        ]}
-      >
-        {checked ? (
-          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-        ) : null}
+      <View style={styles.checkWrap}>
+        <View style={[styles.checkShadow, { backgroundColor: NEO.black }]} />
+        <View
+          style={[
+            styles.check,
+            {
+              backgroundColor: checked ? NEO.yellow : NEO.white,
+              borderColor: NEO.black,
+            },
+          ]}
+        >
+          {checked ? (
+            <Ionicons name="checkmark" size={22} color={NEO.black} />
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
@@ -457,7 +466,14 @@ const styles = StyleSheet.create({
   },
   headerTexts: { flex: 1 },
   kicker: { fontSize: 11, letterSpacing: 1.2, fontWeight: "700", opacity: 0.6 },
-  title: { fontSize: 20, fontWeight: "800", marginTop: 2 },
+  title: {
+    fontSize: 20,
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 2,
+  },
   iconButton: { padding: 8 },
   addButton: {
     alignItems: "center",
@@ -476,36 +492,44 @@ const styles = StyleSheet.create({
   },
   row: {
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: "#000",
     flex: 1,
     flexDirection: "row",
     gap: 10,
-    minHeight: 52,
+    minHeight: 56,
     paddingHorizontal: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
-  folderRow: {
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+  folderRow: { backgroundColor: "#fff", borderWidth: 4, borderColor: "#000" },
+  userRow: { backgroundColor: "#fff" },
+  rowText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+    textTransform: "uppercase",
   },
-  userRow: { backgroundColor: "#2563EB" },
-  rowText: { flex: 1, fontSize: 16, fontWeight: "600" },
-  count: { fontSize: 14, fontWeight: "700", opacity: 0.7 },
+  count: { fontSize: 14, fontWeight: "900", fontFamily: "SpaceMono-Regular" },
   checkHit: {
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
   },
+  checkWrap: { position: "relative", width: 32, height: 32 },
+  checkShadow: { position: "absolute", top: 4, left: 4, width: 32, height: 32 },
   check: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "#22C55E",
+    width: 32,
+    height: 32,
+    borderRadius: 0,
+    borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
   bottomBar: {
     borderTopWidth: 1,

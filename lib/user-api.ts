@@ -1,10 +1,5 @@
 import { asArray, credentials, rest } from "@/lib/supabase-rest";
 
-function asArrayOld<T>(value: unknown): T[] {
-  if (!Array.isArray(value)) throw new Error("bad-response");
-  return value as T[];
-}
-
 export type Task = {
   id: string;
   kind: "D" | "R";

@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BrutalBadge } from "@/components/BrutalBadge";
+import { BrutalButton } from "@/components/BrutalButton";
 import { PositionPicker } from "@/components/PositionPicker";
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
@@ -99,7 +101,6 @@ export default function SablonyScreen() {
   const [positionPickerVisible, setPositionPickerVisible] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<Template | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<number>(1);
-  const [isGlobalPublishMode, setIsGlobalPublishMode] = useState(false);
   const [isPublishingGlobal, setIsPublishingGlobal] = useState(false);
 
   const load = useCallback(async () => {
@@ -233,8 +234,7 @@ export default function SablonyScreen() {
   };
 
   const handleLongPressPublishAll = (tpl: Template) => {
-    // FLOW 1 NOVY: podrzim = 1-15 pro vsechny
-    setIsGlobalPublishMode(true);
+    // FLOW 1: vzdy 1-15 pro vsechny, isGlobal state uz neni potreba
     setPendingTemplate(tpl);
     setSelectedPosition(1);
     setPositionPickerVisible(true);
@@ -256,7 +256,6 @@ export default function SablonyScreen() {
       );
       setPositionPickerVisible(false);
       setPendingTemplate(null);
-      setIsGlobalPublishMode(false);
       await load();
     } catch (e) {
       Alert.alert("Chyba", errorMessage(e as any, "Publikování selhalo."));
@@ -440,22 +439,19 @@ export default function SablonyScreen() {
                 </View>
               ) : null}
               <View style={styles.cardHeader}>
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: CATEGORY_COLOR[tpl.category] },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {CATEGORY_LABEL[tpl.category]}
-                  </Text>
-                </View>
+                <BrutalBadge
+                  label={CATEGORY_LABEL[tpl.category]}
+                  bg={CATEGORY_COLOR[tpl.category]}
+                  color="#fff"
+                  rotate="-1deg"
+                />
                 {tpl.is_global ? (
-                  <View style={[styles.badge, { backgroundColor: "#10B981" }]}>
-                    <Text style={styles.badgeText}>
-                      GLOBAL {tpl.global_position}
-                    </Text>
-                  </View>
+                  <BrutalBadge
+                    label={`GLOBAL ${tpl.global_position}`}
+                    bg="#FFE600"
+                    color="#000"
+                    rotate="1deg"
+                  />
                 ) : null}
                 <View
                   style={[
@@ -480,54 +476,35 @@ export default function SablonyScreen() {
 
               <View style={styles.cardActions}>
                 {isSelected ? (
-                  <Pressable
+                  <BrutalButton
+                    title="Zrušit výběr"
+                    variant="white"
                     onPress={handleDeselect}
-                    style={[
-                      styles.actionBtn,
-                      {
-                        backgroundColor: "#fff",
-                        borderWidth: 1,
-                        borderColor: "#10B981",
-                      },
-                    ]}
-                  >
-                    <Ionicons name="close" size={16} color="#059669" />
-                    <Text style={[styles.actionText, { color: "#059669" }]}>
-                      Zrušit výběr
-                    </Text>
-                  </Pressable>
+                  />
                 ) : (
-                  <Pressable
+                  <BrutalButton
+                    title="Použít jako vzor"
+                    variant="black"
                     onPress={() => handleSelectAsVzor(tpl)}
-                    style={[styles.actionBtn, { backgroundColor: "#111827" }]}
-                  >
-                    <Ionicons name="checkmark" size={16} color="#fff" />
-                    <Text style={styles.actionText}>Použít jako vzor</Text>
-                  </Pressable>
+                  />
                 )}
-                <Pressable
+                <BrutalButton
+                  title="Upravit"
+                  variant="yellow"
                   onPress={() => openEdit(tpl)}
-                  style={[styles.actionBtn, { backgroundColor: "#0F766E" }]}
-                >
-                  <Ionicons name="create-outline" size={16} color="#fff" />
-                  <Text style={styles.actionText}>Upravit</Text>
-                </Pressable>
+                />
               </View>
               <View style={styles.secondaryRow}>
-                <Pressable
+                <BrutalButton
+                  title="Duplikovat"
+                  variant="white"
                   onPress={() => handleDuplicate(tpl)}
-                  style={styles.smallBtn}
-                >
-                  <Text style={styles.smallText}>Duplikovat</Text>
-                </Pressable>
-                <Pressable
+                />
+                <BrutalButton
+                  title="Smazat"
+                  variant="pink"
                   onPress={() => handleDelete(tpl)}
-                  style={[styles.smallBtn, { borderColor: "#FCA5A5" }]}
-                >
-                  <Text style={[styles.smallText, { color: "#DC2626" }]}>
-                    Smazat
-                  </Text>
-                </Pressable>
+                />
               </View>
               <Text style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
                 Podrž pro publikaci všem na 1-15 · Klik Použít jako vzor =
@@ -861,7 +838,6 @@ export default function SablonyScreen() {
         onConfirm={handlePositionConfirm}
         onCancel={() => {
           setPositionPickerVisible(false);
-          setIsGlobalPublishMode(false);
         }}
         isLoading={isPublishingGlobal}
         min={GLOBAL_MIN}
@@ -925,11 +901,16 @@ const styles = StyleSheet.create({
   retry: { fontWeight: "700", marginTop: 6, textDecorationLine: "underline" },
   list: { paddingHorizontal: 16, paddingTop: 8, gap: 12 },
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: "#000",
     padding: 14,
     gap: 8,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   selectedRibbon: {
     position: "absolute",
@@ -1071,46 +1052,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   reqText: { fontSize: 12, fontWeight: "600" },
-  positionBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    padding: 20,
-  },
-  positionCard: { borderRadius: 20, padding: 20, gap: 12 },
-  positionTitle: { fontSize: 18, fontWeight: "800" },
-  positionSub: { fontSize: 13, opacity: 0.7 },
-  positionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  },
-  posTile: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  posTileActive: { backgroundColor: "#0F766E", borderColor: "#0F766E" },
-  posText: { fontSize: 18, fontWeight: "800" },
-  posTextActive: { color: "#fff" },
-  positionActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
-    marginTop: 12,
-  },
-  positionCancel: { paddingHorizontal: 14, paddingVertical: 10 },
-  positionCancelText: { fontWeight: "700" },
-  positionConfirm: {
-    backgroundColor: "#0F766E",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  positionConfirmText: { color: "#fff", fontWeight: "800" },
 });
