@@ -71,6 +71,7 @@ export default function UserHomeScreen() {
   const gridWidth = Math.min(width, 440) - 32;
   const tile = Math.floor((gridWidth - GAP * (COLUMNS - 1)) / COLUMNS);
   const tasks = home?.tasks ?? [];
+  const completedSpecial = (home as any)?.completedSpecial ?? [];
   const specialTasks = tasks.filter(
     (t: any) => (t as any).is_ephemeral || t.position === 16,
   );
@@ -88,7 +89,7 @@ export default function UserHomeScreen() {
         }
     }
   }
-  const slots = 15; // 1-15 normal, 16 je specialni
+  const slots = 16; // 1-15 normal, 16 = X červený vedle 15ky, pak S, pak O oprava
 
   const hasNew = tasks.some((task) => task.isNew);
   const lightColor = hasNew ? "#DC2626" : "#16A34A";
@@ -193,8 +194,98 @@ export default function UserHomeScreen() {
         <View style={styles.grid}>
           {Array.from({ length: slots }, (_, index) => {
             const pos = index + 1;
-            const task = tasksByPos.get(pos);
             const size = { width: tile, height: tile };
+
+            if (pos === 16) {
+              const special = specialTasks[0];
+              const completed = completedSpecial[0];
+
+              if (special) {
+                return (
+                  <BrutalCard
+                    key={special.id}
+                    bg={"#D97706"}
+                    borderColor={NEO.black}
+                    rotate={"-1deg"}
+                    style={[size, { padding: 0 }]}
+                  >
+                    <Pressable
+                      onPress={() => setIsEphemeralVisible(true)}
+                      style={[
+                        styles.tile,
+                        size,
+                        { backgroundColor: "#D97706", borderWidth: 0 },
+                      ]}
+                    >
+                      <Text style={[styles.tileKind, FONTS.brutalTitle]}>
+                        S
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.tileTitle, FONTS.brutalTitle]}
+                      >
+                        {special.title.slice(0, 6)}
+                      </Text>
+                      <Text style={[styles.tilePos, FONTS.mono]}>16</Text>
+                    </Pressable>
+                  </BrutalCard>
+                );
+              }
+
+              if (completed) {
+                return (
+                  <BrutalCard
+                    key={`oprava-16`}
+                    bg={"#3B82F6"}
+                    borderColor={NEO.black}
+                    rotate={"1deg"}
+                    style={[size, { padding: 0 }]}
+                  >
+                    <Pressable
+                      onPress={() =>
+                        router.push(
+                          `/user/dotaznik/${completed.id}?edit=1` as any,
+                        )
+                      }
+                      style={[
+                        styles.tile,
+                        size,
+                        { backgroundColor: "#3B82F6", borderWidth: 0 },
+                      ]}
+                    >
+                      <Text style={[styles.tileKind, FONTS.brutalTitle]}>
+                        O
+                      </Text>
+                      <Text style={[styles.tileTitle, FONTS.brutalTitle]}>
+                        OPRAVA
+                      </Text>
+                      <Text style={[styles.tilePos, FONTS.mono]}>16</Text>
+                    </Pressable>
+                  </BrutalCard>
+                );
+              }
+
+              return (
+                <View
+                  key={`x-16`}
+                  style={[
+                    styles.tile,
+                    size,
+                    {
+                      backgroundColor: NEO.red,
+                      borderColor: NEO.black,
+                      borderWidth: 4,
+                      borderRadius: 0,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.tileKind, FONTS.brutalTitle]}>X</Text>
+                  <Text style={[styles.tilePos, FONTS.mono]}>16</Text>
+                </View>
+              );
+            }
+
+            const task = tasksByPos.get(pos);
             if (!task) {
               return (
                 <View

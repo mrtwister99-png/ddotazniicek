@@ -38,6 +38,7 @@ export type UserHome = {
   tasks: Task[]; // nesplněné úkoly (D = dotazník, R = reklama)
   points: number; // B
   doneQuestionnaires: number; // D
+  completedSpecial: Task[];
 };
 
 type DeliveryRow = {
@@ -46,6 +47,7 @@ type DeliveryRow = {
   position: number | null;
   template_id: string;
   is_ephemeral: boolean;
+  completed_at: string | null;
   templates:
     | {
         id?: string;
@@ -76,7 +78,7 @@ export async function loadUserHome(): Promise<UserHome> {
   try {
     const [d, g] = await Promise.all([
       rest(
-        `form_deliveries?select=id,status,position,template_id,is_ephemeral,templates(id,title,category,points,description)&user_id=eq.${userId}&status=neq.cancelled&order=position.asc.nullsLast,sent_at.desc`,
+        `form_deliveries?select=id,status,position,template_id,is_ephemeral,completed_at,templates(id,title,category,points,description)&user_id=eq.${userId}&status=neq.cancelled&order=position.asc.nullsLast,sent_at.desc`,
       ),
       rest(
         `templates?select=id,title,description,points,category,global_position&is_global=eq.true&status=eq.published&order=global_position.asc`,
@@ -86,7 +88,7 @@ export async function loadUserHome(): Promise<UserHome> {
     globals = g;
   } catch {
     deliveries = await rest(
-      `form_deliveries?select=id,status,template_id,is_ephemeral,templates(id,title,category,points,description)&user_id=eq.${userId}&status=neq.cancelled&order=sent_at.desc`,
+      `form_deliveries?select=id,status,position,template_id,is_ephemeral,completed_at,templates(id,title,category,points,description)&user_id=eq.${userId}&status=neq.cancelled&order=sent_at.desc`,
     );
   }
 
@@ -95,7 +97,10 @@ export async function loadUserHome(): Promise<UserHome> {
     display_name: string | null;
   }>(profiles)[0];
   const tasks: Task[] = [];
+  const completedSpecial: Task[] = [];
   let doneQuestionnaires = 0;
+  const now = Date.now();
+  const THIRTY_MIN = 30 * 60 * 1000;
 
   for (const row of asArray<DeliveryRow>(deliveries)) {
     const template = Array.isArray(row.templates)
@@ -105,6 +110,26 @@ export async function loadUserHome(): Promise<UserHome> {
     const cat = (template?.category as Task["category"]) ?? "questionnaire";
     if (row.status === "completed") {
       if (kind === "D") doneQuestionnaires += 1;
+      if (
+        (row.position === 16 || (row as any).is_ephemeral) &&
+        (row as any).completed_at
+      ) {
+        const completedTime = new Date((row as any).completed_at).getTime();
+        if (now - completedTime <= THIRTY_MIN) {
+          completedSpecial.push({
+            id: row.id,
+            kind,
+            title: template?.title ?? "",
+            isNew: false,
+            points: template?.points ?? 0,
+            position: row.position ?? 16,
+            templateId: row.template_id,
+            category: cat,
+            description: (template as any)?.description ?? null,
+            is_ephemeral: (row as any).is_ephemeral ?? false,
+          } as any);
+        }
+      }
     } else {
       tasks.push({
         id: row.id,
@@ -147,6 +172,7 @@ export async function loadUserHome(): Promise<UserHome> {
     tasks,
     points,
     doneQuestionnaires,
+    completedSpecial,
   };
 }
 
