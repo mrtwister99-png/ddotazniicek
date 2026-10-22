@@ -30,7 +30,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+          "ios_app_id": "ca-app-pub-3940256099942544~1458002511",
+          "user_tracking_usage_phrase": "Tato aplikace pouziva reklamy pro podporu vyvoje"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

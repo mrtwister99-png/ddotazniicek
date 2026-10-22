@@ -39,12 +39,25 @@ export default function VysledkyScreen() {
     setLoading(true);
     setErr(null);
     try {
-      const data = await rest(
-        "responses?select=id,submitted_at,original_answers,delivery_id,user_id,profiles(username),form_deliveries!inner(template_id,position,templates(title))&order=submitted_at.desc&limit=100",
-      );
-      setRows(asArray<ResultRow>(data));
+      let data: unknown;
+      try {
+        data = await rest(
+          "responses?select=id,submitted_at,original_answers,delivery_id,user_id,profiles(username),form_deliveries(template_id,position,templates(title))&order=submitted_at.desc&limit=100",
+        );
+      } catch {
+        data = await rest(
+          "responses?select=id,submitted_at,original_answers,delivery_id,user_id&order=submitted_at.desc&limit=100",
+        );
+      }
+      const rows = asArray<ResultRow>(data);
+      setRows(rows);
     } catch (e) {
-      setErr(errorMessage(e, "Nepodařilo se načíst výsledky."));
+      setErr(
+        errorMessage(
+          e,
+          "Nepodařilo se načíst výsledky. Zkontroluj v Supabase tabulku responses zda tam jsou data.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
