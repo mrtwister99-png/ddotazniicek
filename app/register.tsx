@@ -1,9 +1,11 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  View as RNView,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -76,6 +78,8 @@ export default function RegisterScreen() {
   } | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmVisible, setIsConfirmVisible] = useState(false);
 
   // Odpočet před dalším odesláním kódu.
   useEffect(() => {
@@ -216,32 +220,76 @@ export default function RegisterScreen() {
                 ) : null}
 
                 <Text style={styles.label}>Heslo</Text>
-                <TextInput
-                  accessibilityLabel="Heslo"
-                  autoComplete="new-password"
-                  onChangeText={setPassword}
-                  placeholder="Alespoň 8 znaků"
-                  placeholderTextColor={placeholderColor}
-                  secureTextEntry
-                  style={inputStyle}
-                  value={password}
-                />
+                <RNView style={{ justifyContent: "center" }}>
+                  <TextInput
+                    accessibilityLabel="Heslo"
+                    autoComplete="new-password"
+                    onChangeText={setPassword}
+                    placeholder="Alespoň 8 znaků"
+                    placeholderTextColor={placeholderColor}
+                    secureTextEntry={!isPasswordVisible}
+                    style={[inputStyle, { paddingRight: 56 }]}
+                    value={password}
+                  />
+                  <Pressable
+                    onPressIn={() => setIsPasswordVisible(true)}
+                    onPressOut={() => setIsPasswordVisible(false)}
+                    style={{
+                      position: "absolute",
+                      right: 2,
+                      width: 48,
+                      height: 48,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name={
+                        isPasswordVisible ? "eye-off-outline" : "eye-outline"
+                      }
+                      size={22}
+                      color={theme.text}
+                    />
+                  </Pressable>
+                </RNView>
                 {errors.password ? (
                   <Text style={styles.error}>{errors.password}</Text>
                 ) : null}
 
                 <Text style={styles.label}>Heslo znovu</Text>
-                <TextInput
-                  accessibilityLabel="Heslo znovu"
-                  autoComplete="new-password"
-                  onChangeText={setConfirm}
-                  onSubmitEditing={submitForm}
-                  placeholder="Zopakujte heslo"
-                  placeholderTextColor={placeholderColor}
-                  secureTextEntry
-                  style={inputStyle}
-                  value={confirm}
-                />
+                <RNView style={{ justifyContent: "center" }}>
+                  <TextInput
+                    accessibilityLabel="Heslo znovu"
+                    autoComplete="new-password"
+                    onChangeText={setConfirm}
+                    onSubmitEditing={submitForm}
+                    placeholder="Zopakujte heslo"
+                    placeholderTextColor={placeholderColor}
+                    secureTextEntry={!isConfirmVisible}
+                    style={[inputStyle, { paddingRight: 56 }]}
+                    value={confirm}
+                  />
+                  <Pressable
+                    onPressIn={() => setIsConfirmVisible(true)}
+                    onPressOut={() => setIsConfirmVisible(false)}
+                    style={{
+                      position: "absolute",
+                      right: 2,
+                      width: 48,
+                      height: 48,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name={
+                        isConfirmVisible ? "eye-off-outline" : "eye-outline"
+                      }
+                      size={22}
+                      color={theme.text}
+                    />
+                  </Pressable>
+                </RNView>
                 {errors.confirm ? (
                   <Text style={styles.error}>{errors.confirm}</Text>
                 ) : null}
