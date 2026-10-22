@@ -22,6 +22,8 @@ export type Template = {
   category: "questionnaire" | "advertisement" | "special_questionnaire";
   created_at: string;
   created_by: string;
+  is_global?: boolean;
+  global_position?: number | null;
 };
 
 export type TemplateBlock = {
@@ -124,7 +126,7 @@ export async function createFolder(name: string): Promise<void> {
 
 export async function loadTemplates(): Promise<Template[]> {
   const rows = await rest(
-    "templates?select=id,title,description,points,status,category,created_at,created_by&order=created_at.desc",
+    "templates?select=id,title,description,points,status,category,created_at,created_by,is_global,global_position&order=created_at.desc",
   );
   return asArray<Template>(rows);
 }
@@ -252,10 +254,24 @@ export async function saveTemplateBlocks(
   return asArray<TemplateBlock>(rows).sort((a, b) => a.position - b.position);
 }
 
+export async function setGlobalTemplate(
+  templateId: string,
+  position: number,
+  isGlobal: boolean,
+): Promise<Template> {
+  if (position < 1 || position > 16) throw new Error("bad-position");
+  return updateTemplate(templateId, {
+    // @ts-ignore - nove sloupce po migraci
+    is_global: isGlobal,
+    global_position: isGlobal ? position : null,
+  } as any);
+}
+
 export async function createDeliveries(
   templateId: string,
   userIds: string[],
   position?: number,
+  isEphemeral: boolean = false,
 ): Promise<DeliveryCreateResult> {
   const { userId, baseUrl, anonKey, token } = credentials();
   if (userIds.length === 0) throw new Error("no-recipients");
@@ -268,6 +284,7 @@ export async function createDeliveries(
     sent_by: userId,
     status: "sent",
     position: position ?? null,
+    is_ephemeral: isEphemeral,
   }));
   const response = await fetch(`${baseUrl}/rest/v1/form_deliveries`, {
     method: "POST",
@@ -288,9 +305,18 @@ export async function createDeliveries(
   let failedPush = 0;
   try {
     const pushBase = `${baseUrl}/functions/v1/send-ephemeral-notification`;
+    // nacist kategorii pro spravnou URL
+    const tRows = await rest(`templates?select=category&id=eq.${templateId}`);
+    const cat = (tRows as any)[0]?.category ?? "questionnaire";
+    const routePrefix =
+      cat === "advertisement"
+        ? "reklama"
+        : cat === "special_questionnaire"
+          ? "specialni-dotaznik"
+          : "dotaznik";
     for (const row of createdRows) {
       try {
-        await fetch(pushBase, {
+        const res = await fetch(pushBase, {
           method: "POST",
           headers: {
             apikey: anonKey,
@@ -299,17 +325,44 @@ export async function createDeliveries(
           },
           body: JSON.stringify({
             kind: "delivery",
-            user_id: row.user_id,
-            delivery_id: row.id,
-            template_id: templateId,
+            recipientUserId: row.user_id,
+            message: `Nový úkol: ${row.template_id}`,
+            url: `/${routePrefix}/${row.id}`,
           }),
         });
+        if (!res.ok) failedPush++;
       } catch {
         failedPush++;
       }
     }
-  } catch {}
+  } catch {
+    failedPush = createdRows.length;
+  }
   return { created: createdRows.length, failedPush };
+}
+
+export async function loadAllUserIds(): Promise<string[]> {
+  const rows = await rest(
+    "profiles?select=id&or=(role.is.null,role.eq.user)&order=created_at.asc",
+  );
+  return asArray<{ id: string }>(rows).map((r) => r.id);
+}
+
+export async function publishTemplateToAll(
+  templateId: string,
+  position: number,
+): Promise<DeliveryCreateResult> {
+  // Flow 1 = tichy global, zadna notifikace, zadne N delivery radku
+  return { created: 1, failedPush: 0 };
+}
+
+export async function publishGlobalTemplate(
+  templateId: string,
+  position: number,
+): Promise<Template> {
+  if (position < 1 || position > 16) throw new Error("bad-position");
+  // jen oznacit sablonu jako globalni, klient ji cte primo
+  return setGlobalTemplate(templateId, position, true);
 }
 
 export function errorMessage(error: unknown, fallback: string): string {

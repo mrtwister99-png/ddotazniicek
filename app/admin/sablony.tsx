@@ -22,6 +22,7 @@ import {
   errorMessage,
   loadTemplateDetail,
   loadTemplates,
+  publishGlobalTemplate,
   saveTemplateBlocks,
   updateTemplate,
   type Template,
@@ -96,6 +97,8 @@ export default function SablonyScreen() {
   const [positionPickerVisible, setPositionPickerVisible] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<Template | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<number>(1);
+  const [isGlobalPublishMode, setIsGlobalPublishMode] = useState(false);
+  const [isPublishingGlobal, setIsPublishingGlobal] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -211,10 +214,19 @@ export default function SablonyScreen() {
   };
 
   const handleSelectAsVzor = (tpl: Template) => {
+    setIsGlobalPublishMode(false);
     setPendingTemplate(tpl);
     setSelectedPosition(selectedTemplate?.position ?? 1);
     setPositionPickerVisible(true);
   };
+
+  const handleLongPressPublishAll = (tpl: Template) => {
+    setIsGlobalPublishMode(true);
+    setPendingTemplate(tpl);
+    setSelectedPosition(1);
+    setPositionPickerVisible(true);
+  };
+
   const confirmSelectAsVzor = () => {
     if (!pendingTemplate) return;
     setSelectedTemplate({
@@ -228,6 +240,36 @@ export default function SablonyScreen() {
     });
     setPositionPickerVisible(false);
     setPendingTemplate(null);
+    setIsGlobalPublishMode(false);
+  };
+
+  const confirmPublishToAll = async () => {
+    if (!pendingTemplate) return;
+    if (isPublishingGlobal) return;
+    setIsPublishingGlobal(true);
+    try {
+      await publishGlobalTemplate(pendingTemplate.id, selectedPosition);
+      Alert.alert(
+        "Publikováno všem (bez notifikace)",
+        `✅ Dotazník "${pendingTemplate.title}" je nyní globální na pozici ${selectedPosition}. DB ušetřena, žádný push neodešel.`,
+      );
+      setPositionPickerVisible(false);
+      setPendingTemplate(null);
+      setIsGlobalPublishMode(false);
+      await load();
+    } catch (e) {
+      Alert.alert("Chyba", errorMessage(e as any, "Publikování všem selhalo."));
+    } finally {
+      setIsPublishingGlobal(false);
+    }
+  };
+
+  const handlePositionConfirm = () => {
+    if (isGlobalPublishMode) {
+      void confirmPublishToAll();
+    } else {
+      confirmSelectAsVzor();
+    }
   };
 
   const handleDeselect = () => {
@@ -381,8 +423,10 @@ export default function SablonyScreen() {
         {templates.map((tpl) => {
           const isSelected = selectedTemplate?.id === tpl.id;
           return (
-            <View
+            <Pressable
               key={tpl.id}
+              onLongPress={() => handleLongPressPublishAll(tpl)}
+              delayLongPress={600}
               style={[
                 styles.card,
                 {
@@ -481,7 +525,10 @@ export default function SablonyScreen() {
                   </Text>
                 </Pressable>
               </View>
-            </View>
+              <Text style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
+                Podrž pro publikaci všem na pozici
+              </Text>
+            </Pressable>
           );
         })}
         {!isLoading && templates.length === 0 && !error ? (
@@ -810,9 +857,14 @@ export default function SablonyScreen() {
           <View
             style={[styles.positionCard, { backgroundColor: theme.background }]}
           >
-            <Text style={styles.positionTitle}>Vyber pozici 1-16 (4x4)</Text>
+            <Text style={styles.positionTitle}>
+              {isGlobalPublishMode
+                ? "Publikovat VŠEM na pozici 1-16"
+                : "Vyber pozici 1-16 (4x4)"}
+            </Text>
             <Text style={styles.positionSub}>
-              {pendingTemplate?.title} · {pendingTemplate?.points}b
+              {pendingTemplate?.title} · {pendingTemplate?.points}b{" "}
+              {isGlobalPublishMode ? "· VŠEM UŽIVATELŮM" : ""}
             </Text>
             <View style={styles.positionGrid}>
               {Array.from({ length: 16 }, (_, i) => {
@@ -835,18 +887,31 @@ export default function SablonyScreen() {
             </View>
             <View style={styles.positionActions}>
               <Pressable
-                onPress={() => setPositionPickerVisible(false)}
+                onPress={() => {
+                  setPositionPickerVisible(false);
+                  setIsGlobalPublishMode(false);
+                }}
                 style={styles.positionCancel}
               >
                 <Text style={styles.positionCancelText}>Zrušit</Text>
               </Pressable>
               <Pressable
-                onPress={confirmSelectAsVzor}
-                style={styles.positionConfirm}
+                onPress={handlePositionConfirm}
+                disabled={isPublishingGlobal}
+                style={[
+                  styles.positionConfirm,
+                  isPublishingGlobal && { opacity: 0.6 },
+                ]}
               >
-                <Text style={styles.positionConfirmText}>
-                  Potvrdit pozici {selectedPosition}
-                </Text>
+                {isPublishingGlobal ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.positionConfirmText}>
+                    {isGlobalPublishMode
+                      ? `Publikovat všem na ${selectedPosition}`
+                      : `Potvrdit pozici ${selectedPosition}`}
+                  </Text>
+                )}
               </Pressable>
             </View>
           </View>

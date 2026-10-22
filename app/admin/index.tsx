@@ -193,13 +193,15 @@ export default function AdminDashboard() {
             setIsSending(true);
             setSendResult(null);
             try {
+              const isEphemeral = true; // flow 2 = jen modal pro vybrane, ne v gridu
               const res = await createDeliveries(
                 selectedTemplate.id,
                 Array.from(selectedUserIds),
                 selectedTemplate.position,
+                isEphemeral,
               );
               setSendResult(
-                `✅ Odesláno ${res.created} uživatelům na pozici ${selectedTemplate.position ?? "auto"}`,
+                `✅ Odesláno ${res.created} uživatelům jako EPHEMERAL na pozici ${selectedTemplate.position ?? "auto"} - vyskoci jim modal`,
               );
               setSelectedUserIds(new Set());
             } catch (e) {

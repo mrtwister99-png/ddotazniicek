@@ -1,10 +1,13 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,7 +16,15 @@ import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import { errorMessage } from "@/lib/admin-api";
-import { loadUserHome, type UserHome } from "@/lib/user-api";
+import {
+  loadDeliveryDetail,
+  loadUserHome,
+  submitResponse,
+  type DeliveryBlock,
+  type DeliveryDetail,
+  type Task,
+  type UserHome,
+} from "@/lib/user-api";
 
 const COLUMNS = 4;
 const GAP = 10;
@@ -27,6 +38,15 @@ export default function UserHomeScreen() {
   const [home, setHome] = useState<UserHome | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [ephemeralTask, setEphemeralTask] = useState<Task | null>(null);
+  const [isEphemeralVisible, setIsEphemeralVisible] = useState(false);
+  const [ephemeralDetail, setEphemeralDetail] = useState<DeliveryDetail | null>(
+    null,
+  );
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -47,15 +67,15 @@ export default function UserHomeScreen() {
     }, [load]),
   );
 
-  // Čtvercové dlaždice: 4 sloupce, minimálně 4 řádky (volná místa jsou jen obrysy).
   const gridWidth = Math.min(width, 440) - 32;
   const tile = Math.floor((gridWidth - GAP * (COLUMNS - 1)) / COLUMNS);
   const tasks = home?.tasks ?? [];
-  const tasksByPos = new Map<number, (typeof tasks)[number]>();
-  for (const t of tasks) {
+  const specialTasks = tasks.filter((t: any) => (t as any).is_ephemeral);
+  const gridTasks = tasks.filter((t: any) => !(t as any).is_ephemeral);
+  const tasksByPos = new Map<number, (typeof gridTasks)[number]>();
+  for (const t of gridTasks) {
     if (t.position >= 1 && t.position <= 16) tasksByPos.set(t.position, t);
     else if (t.position === 0) {
-      // fallback pro staré delivery bez pozice - najdi první volné
       for (let p = 1; p <= 16; p++)
         if (!tasksByPos.has(p)) {
           tasksByPos.set(p, { ...t, position: p });
@@ -68,6 +88,75 @@ export default function UserHomeScreen() {
   const hasNew = tasks.some((task) => task.isNew);
   const lightColor = hasNew ? "#DC2626" : "#16A34A";
   const lightText = hasNew ? "Nový úkol" : "Žádný nový úkol";
+
+  useEffect(() => {
+    if (!home) return;
+    const firstNewSpecial = specialTasks.find((t) => t.isNew) ?? null;
+    const firstNewAny = tasks.find((t) => t.isNew) ?? null;
+    const candidate = firstNewSpecial ?? firstNewAny;
+    if (candidate && !isEphemeralVisible) {
+      setEphemeralTask(candidate);
+      setIsEphemeralVisible(true);
+    }
+  }, [home]);
+
+  useEffect(() => {
+    if (!ephemeralTask || !isEphemeralVisible) return;
+    let cancelled = false;
+    (async () => {
+      setIsDetailLoading(true);
+      try {
+        const detail = await loadDeliveryDetail(ephemeralTask.id);
+        if (!cancelled) {
+          setEphemeralDetail(detail);
+          setAnswers({});
+        }
+      } catch (e) {
+        if (!cancelled) {
+          Alert.alert(
+            "Chyba",
+            errorMessage(e, "Nepodařilo se načíst dotazník."),
+          );
+          setIsEphemeralVisible(false);
+        }
+      } finally {
+        if (!cancelled) setIsDetailLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ephemeralTask, isEphemeralVisible]);
+
+  const handleEphemeralSubmit = async () => {
+    if (!ephemeralTask) return;
+    if (ephemeralDetail) {
+      for (const b of ephemeralDetail.blocks) {
+        if (b.is_required) {
+          const v = answers[b.id];
+          if (v === undefined || v === "" || v === null) {
+            Alert.alert(
+              "Vyplň povinné",
+              `Blok na pozici ${b.position + 1} je povinný.`,
+            );
+            return;
+          }
+        }
+      }
+    }
+    setIsSubmitting(true);
+    try {
+      await submitResponse(ephemeralTask.id, answers);
+      setIsEphemeralVisible(false);
+      setEphemeralTask(null);
+      setEphemeralDetail(null);
+      await load();
+    } catch (e) {
+      Alert.alert("Chyba", errorMessage(e, "Odeslání selhalo."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -173,6 +262,130 @@ export default function UserHomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isEphemeralVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsEphemeralVisible(false)}
+      >
+        <SafeAreaView
+          style={[styles.safeArea, { backgroundColor: theme.background }]}
+        >
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            {isDetailLoading || !ephemeralDetail ? (
+              <ActivityIndicator style={{ marginTop: 32 }} />
+            ) : (
+              <>
+                <Text style={styles.modalTitle}>
+                  {ephemeralDetail.template.title}
+                </Text>
+                {ephemeralDetail.template.description ? (
+                  <Text style={styles.modalDesc}>
+                    {ephemeralDetail.template.description}
+                  </Text>
+                ) : null}
+                <Text style={styles.modalPoints}>
+                  {ephemeralDetail.template.points}b · speciálně pro tebe
+                </Text>
+
+                {ephemeralDetail.blocks.map((block: DeliveryBlock) => (
+                  <View key={block.id} style={styles.blockCard}>
+                    {block.kind === "text" ? (
+                      <Text style={styles.blockText}>
+                        {block.content.text ?? ""}
+                      </Text>
+                    ) : null}
+                    {block.kind === "scale" ? (
+                      <>
+                        <Text style={styles.blockLabel}>
+                          {block.content.label ??
+                            `Škála ${block.content.min ?? 0}-${block.content.max ?? 10}`}
+                        </Text>
+                        <View style={styles.scaleRow}>
+                          {Array.from(
+                            {
+                              length:
+                                (block.content.max ?? 10) -
+                                (block.content.min ?? 0) +
+                                1,
+                            },
+                            (_, i) => {
+                              const val = (block.content.min ?? 0) + i;
+                              const active = answers[block.id] === val;
+                              return (
+                                <Pressable
+                                  key={val}
+                                  onPress={() =>
+                                    setAnswers((prev: Record<string, any>) => ({
+                                      ...prev,
+                                      [block.id]: val,
+                                    }))
+                                  }
+                                  style={[
+                                    styles.scaleBtn,
+                                    active && styles.scaleBtnActive,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.scaleText,
+                                      active && styles.scaleTextActive,
+                                    ]}
+                                  >
+                                    {val}
+                                  </Text>
+                                </Pressable>
+                              );
+                            },
+                          )}
+                        </View>
+                      </>
+                    ) : null}
+                    {block.kind === "short_text" ? (
+                      <TextInput
+                        placeholder={block.content.placeholder ?? "Odpověď..."}
+                        value={answers[block.id] ?? ""}
+                        onChangeText={(t: string) =>
+                          setAnswers((prev: Record<string, any>) => ({
+                            ...prev,
+                            [block.id]: t,
+                          }))
+                        }
+                        style={styles.answerInput}
+                        multiline
+                      />
+                    ) : null}
+                    {block.is_required ? (
+                      <Text style={styles.requiredHint}>* povinné</Text>
+                    ) : null}
+                  </View>
+                ))}
+
+                <Pressable
+                  onPress={handleEphemeralSubmit}
+                  disabled={isSubmitting}
+                  style={[styles.submitBtn, isSubmitting && { opacity: 0.6 }]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitText}>Odeslat</Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => setIsEphemeralVisible(false)}
+                  style={styles.closeBtn}
+                >
+                  <Text style={styles.closeText}>
+                    Zavřít (zobrazí se znovu)
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -262,4 +475,51 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textDecorationLine: "underline",
   },
+  modalContent: { padding: 20, gap: 12 },
+  modalTitle: { fontSize: 22, fontWeight: "800" },
+  modalDesc: { fontSize: 15, opacity: 0.8, marginTop: 4 },
+  modalPoints: { fontSize: 13, fontWeight: "700", color: "#D97706" },
+  blockCard: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+    gap: 8,
+  },
+  blockText: { fontSize: 16, fontWeight: "600" },
+  blockLabel: { fontSize: 14, fontWeight: "600", opacity: 0.8 },
+  scaleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  scaleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scaleBtnActive: { backgroundColor: "#0F766E", borderColor: "#0F766E" },
+  scaleText: { fontWeight: "700" },
+  scaleTextActive: { color: "#fff" },
+  answerInput: {
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  requiredHint: { fontSize: 11, color: "#DC2626", fontWeight: "600" },
+  submitBtn: {
+    backgroundColor: "#16A34A",
+    borderRadius: 12,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  submitText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  closeBtn: { alignItems: "center", paddingVertical: 16 },
+  closeText: { fontWeight: "600", opacity: 0.6 },
 });
