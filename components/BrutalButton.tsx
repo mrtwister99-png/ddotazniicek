@@ -39,11 +39,20 @@ export function BrutalButton({
   rotate = "0.5deg",
 }: Props) {
   const v = VARIANT_BG[variant];
+  const isDisabled = !!(disabled || loading);
   return (
     <View style={[styles.wrap, style]}>
-      <View style={[styles.shadow, { backgroundColor: NEO.black }]} />
+      <View
+        style={[
+          styles.shadow,
+          { backgroundColor: NEO.black, opacity: isDisabled ? 0.5 : 1 },
+        ]}
+      />
       <Pressable
-        disabled={disabled || loading}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isDisabled, busy: !!loading }}
+        accessibilityLabel={title}
+        disabled={isDisabled}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           onPress?.();
@@ -53,15 +62,22 @@ export function BrutalButton({
           {
             backgroundColor: v.bg,
             borderColor: NEO.black,
-            opacity: disabled ? 0.5 : 1,
+            opacity: isDisabled ? 0.55 : 1,
             transform: [{ rotate }],
           },
         ]}
       >
         {loading ? (
-          <ActivityIndicator color={v.text} />
+          <ActivityIndicator color={v.text} size="small" />
         ) : (
-          <Text style={[styles.text, { color: v.text }]}>{title}</Text>
+          <Text
+            style={[
+              styles.text,
+              { color: v.text, opacity: isDisabled ? 0.7 : 1 },
+            ]}
+          >
+            {title}
+          </Text>
         )}
       </Pressable>
     </View>

@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,9 +14,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BrutalBadge } from "@/components/BrutalBadge";
+import { BrutalButton } from "@/components/BrutalButton";
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
+import Colors, { NEO } from "@/constants/Colors";
 import {
   AuthError,
   PIN_LENGTH,
@@ -80,6 +84,35 @@ export default function RegisterScreen() {
   const [cooldown, setCooldown] = useState(0);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmVisible, setIsConfirmVisible] = useState(false);
+  const [isPinFocused, setIsPinFocused] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const pinRefs = useRef<(TextInput | null)[]>([]);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const triggerShake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: -10,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 8,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 0,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   // Odpočet před dalším odesláním kódu.
   useEffect(() => {
@@ -115,6 +148,7 @@ export default function RegisterScreen() {
       const cleanNick = nickname.trim().replace(/\s+/g, " ");
       if (!(await isNicknameAvailable(cleanNick))) {
         setErrors({ nickname: "Přezdívka je obsazená nebo nepovolená." });
+        setIsBusy(false);
         return;
       }
       await signUp(email.trim(), password, cleanNick);
@@ -130,13 +164,22 @@ export default function RegisterScreen() {
 
   const submitPin = async () => {
     if (isBusy || pin.length !== PIN_LENGTH) return;
+    // auto-focus pryč po 6. číslici
+    pinRefs.current.forEach((r) => r?.blur());
+    setFocusedIndex(null);
     setIsBusy(true);
     setMessage(null);
     try {
       const auth = await verifyCode(email.trim(), pin);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setMessage({ error: false, text: "✅ Účet ověřen! Přesměrovávám..." });
       setAuthSession(auth);
-      router.replace("/user");
+      setTimeout(() => {
+        router.replace("/user");
+      }, 900);
     } catch (error) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      triggerShake();
       setMessage({ error: true, text: messageFor(error) });
       setIsBusy(false);
     }
@@ -158,15 +201,24 @@ export default function RegisterScreen() {
   };
 
   const feedback = message ? (
-    <Text
-      accessibilityLiveRegion="polite"
-      style={[
-        styles.feedback,
-        { color: message.error ? "#B42318" : "#067647" },
-      ]}
-    >
-      {message.text}
-    </Text>
+    message.error ? (
+      <Text
+        accessibilityLiveRegion="polite"
+        style={[styles.feedback, { color: "#B42318" }]}
+      >
+        {message.text}
+      </Text>
+    ) : (
+      <View style={{ marginTop: 16, alignItems: "center", gap: 8 }}>
+        <BrutalBadge label="HOTOVO" bg={NEO.green} rotate="-2deg" />
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[styles.feedback, { color: "#067647", marginTop: 8 }]}
+        >
+          {message.text}
+        </Text>
+      </View>
+    )
   ) : null;
 
   return (
@@ -294,25 +346,22 @@ export default function RegisterScreen() {
                   <Text style={styles.error}>{errors.confirm}</Text>
                 ) : null}
 
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={isBusy}
+                <BrutalButton
+                  title={isBusy ? "Odesílám…" : "Vytvořit účet"}
+                  variant="black"
                   onPress={submitForm}
-                  style={[styles.button, isBusy && styles.disabled]}
-                >
-                  <Text style={styles.buttonText}>
-                    {isBusy ? "Odesílám…" : "Vytvořit účet"}
-                  </Text>
-                </Pressable>
+                  disabled={isBusy}
+                  loading={isBusy}
+                  style={{ width: "100%", alignSelf: "stretch", marginTop: 24 }}
+                />
                 {feedback}
 
-                <Pressable
-                  accessibilityRole="button"
+                <BrutalButton
+                  title="Zpět na přihlášení"
+                  variant="white"
                   onPress={() => router.back()}
-                  style={[styles.outline, { borderColor: "#0F766E" }]}
-                >
-                  <Text style={styles.outlineText}>Zpět na přihlášení</Text>
-                </Pressable>
+                  style={{ width: "100%", alignSelf: "stretch", marginTop: 12 }}
+                />
               </>
             ) : (
               <>
@@ -322,60 +371,113 @@ export default function RegisterScreen() {
                   kód o {PIN_LENGTH} číslicích. Zadejte ho tady.
                 </Text>
 
+                <Animated.View
+                  style={[
+                    styles.pinRow,
+                    { transform: [{ translateX: shakeAnim }] },
+                  ]}
+                >
+                  {Array.from({ length: PIN_LENGTH }).map((_, i) => {
+                    const digit = pin[i] ?? "";
+                    const isFocused = focusedIndex === i;
+                    return (
+                      <View key={i} style={styles.pinBoxWrap}>
+                        <View style={styles.pinBoxShadow} />
+                        <TextInput
+                          ref={(el) => {
+                            pinRefs.current[i] = el;
+                          }}
+                          accessibilityLabel={`Kód číslice ${i + 1}`}
+                          keyboardType="number-pad"
+                          maxLength={1}
+                          selectionColor="#000"
+                          value={digit}
+                          onChangeText={(v) => {
+                            const clean = v.replace(/\D/g, "").slice(-1);
+                            const arr = pin.split("");
+                            while (arr.length < PIN_LENGTH) arr.push("");
+                            arr[i] = clean;
+                            const joined = arr.join("").slice(0, PIN_LENGTH);
+                            setPin(joined);
+                            if (clean && i < PIN_LENGTH - 1) {
+                              pinRefs.current[i + 1]?.focus();
+                            }
+                            if (joined.length === PIN_LENGTH) {
+                              pinRefs.current.forEach((r) => r?.blur());
+                              setFocusedIndex(null);
+                              setTimeout(() => submitPin(), 80);
+                            }
+                          }}
+                          onKeyPress={({ nativeEvent }) => {
+                            if (
+                              nativeEvent.key === "Backspace" &&
+                              !digit &&
+                              i > 0
+                            ) {
+                              pinRefs.current[i - 1]?.focus();
+                            }
+                          }}
+                          onFocus={() => {
+                            setFocusedIndex(i);
+                            setIsPinFocused(true);
+                          }}
+                          onBlur={() => {
+                            setFocusedIndex(null);
+                            setIsPinFocused(false);
+                          }}
+                          style={[
+                            styles.pinBox,
+                            {
+                              backgroundColor: isFocused ? "#FFE600" : "#fff",
+                            },
+                          ]}
+                        />
+                      </View>
+                    );
+                  })}
+                </Animated.View>
                 <TextInput
-                  accessibilityLabel="Kód z e-mailu"
-                  autoComplete="one-time-code"
-                  keyboardType="number-pad"
-                  maxLength={PIN_LENGTH}
-                  onChangeText={(value) => setPin(value.replace(/\D/g, ""))}
-                  onSubmitEditing={submitPin}
-                  placeholder={"•".repeat(PIN_LENGTH)}
-                  placeholderTextColor={placeholderColor}
-                  style={[inputStyle, styles.pinInput]}
                   value={pin}
+                  onChangeText={(v) =>
+                    setPin(v.replace(/\D/g, "").slice(0, PIN_LENGTH))
+                  }
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  keyboardType="number-pad"
+                  style={{ height: 0, opacity: 0 }}
+                  pointerEvents="none"
                 />
 
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={isBusy || pin.length !== PIN_LENGTH}
+                <BrutalButton
+                  title={isBusy ? "Ověřuji…" : "Ověřit"}
+                  variant="black"
                   onPress={submitPin}
-                  style={[
-                    styles.button,
-                    (isBusy || pin.length !== PIN_LENGTH) && styles.disabled,
-                  ]}
-                >
-                  <Text style={styles.buttonText}>
-                    {isBusy ? "Ověřuji…" : "Ověřit"}
-                  </Text>
-                </Pressable>
+                  disabled={isBusy || pin.length !== PIN_LENGTH}
+                  loading={isBusy}
+                  style={{ width: "100%", alignSelf: "stretch" }}
+                />
                 {feedback}
 
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={isBusy || cooldown > 0}
-                  onPress={resend}
-                  style={[
-                    styles.outline,
-                    { borderColor: "#0F766E" },
-                    cooldown > 0 && styles.disabled,
-                  ]}
-                >
-                  <Text style={styles.outlineText}>
-                    {cooldown > 0
+                <BrutalButton
+                  title={
+                    cooldown > 0
                       ? `Poslat kód znovu (${cooldown} s)`
-                      : "Poslat kód znovu"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
+                      : "Poslat kód znovu"
+                  }
+                  variant="yellow"
+                  onPress={resend}
+                  disabled={isBusy || cooldown > 0}
+                  style={{ width: "100%", alignSelf: "stretch", marginTop: 12 }}
+                />
+                <BrutalButton
+                  title="Změnit údaje"
+                  variant="white"
                   onPress={() => {
                     setMessage(null);
                     setStep("form");
                   }}
-                  style={styles.link}
-                >
-                  <Text style={styles.linkText}>Změnit údaje</Text>
-                </Pressable>
+                  style={{ width: "100%", alignSelf: "stretch", marginTop: 12 }}
+                />
               </>
             )}
           </View>
@@ -393,39 +495,66 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 16, marginBottom: 20 },
   label: { fontSize: 16, fontWeight: "600", marginBottom: 8, marginTop: 12 },
   input: {
-    borderRadius: 10,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderWidth: 3,
+    borderColor: "#000",
     fontSize: 16,
     minHeight: 52,
     paddingHorizontal: 14,
+    backgroundColor: "#fff",
+    fontFamily: "SpaceMono-Regular",
   },
-  pinInput: { fontSize: 24, letterSpacing: 8, textAlign: "center" },
+  pinRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+    marginTop: 12,
+    width: "100%",
+  },
+  pinBoxWrap: { position: "relative", width: 48, height: 64, flex: 1 },
+  pinBoxShadow: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    right: -4,
+    bottom: -4,
+    backgroundColor: "#000",
+  },
+  pinBox: {
+    borderWidth: 4,
+    borderColor: "#000",
+    borderRadius: 0,
+    backgroundColor: "#fff",
+    width: "100%",
+    height: 56,
+    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+  },
+  pinWrap: { position: "relative", width: "100%", marginTop: 8 },
+  pinShadow: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    right: -6,
+    bottom: -6,
+    backgroundColor: "#000",
+  },
+  pinInput: {
+    fontSize: 28,
+    letterSpacing: 12,
+    textAlign: "center",
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+    borderWidth: 4,
+    borderColor: "#000",
+    borderRadius: 0,
+    backgroundColor: "#fff",
+    minHeight: 68,
+    paddingHorizontal: 14,
+    textTransform: "uppercase",
+  },
   error: { color: "#B42318", fontSize: 14, marginTop: 6 },
   feedback: { fontSize: 15, marginTop: 16 },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#0F766E",
-    borderRadius: 10,
-    justifyContent: "center",
-    marginTop: 24,
-    minHeight: 52,
-  },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
-  outline: {
-    alignItems: "center",
-    borderRadius: 10,
-    borderWidth: 1.5,
-    justifyContent: "center",
-    marginTop: 12,
-    minHeight: 52,
-  },
-  outlineText: { fontSize: 16, fontWeight: "600" },
-  link: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    minHeight: 44,
-  },
-  linkText: { fontSize: 16, textDecorationLine: "underline" },
-  disabled: { opacity: 0.55 },
 });

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -92,6 +93,7 @@ export default function LoginScreen() {
     }
 
     if (!response.ok) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setFeedback({
         type: "error",
         message:
@@ -123,6 +125,7 @@ export default function LoginScreen() {
     }
 
     // Uložíme session do paměti a pošleme uživatele do správného menu (admin / uživatel).
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAuthSession(result);
     setIsSubmitting(false);
     router.replace(isAdminUser(result.user) ? "/admin" : "/user");
@@ -215,12 +218,15 @@ export default function LoginScreen() {
               title={isSubmitting ? "Přihlašuji…" : "Přihlásit se"}
               variant="black"
               onPress={handleLogin}
+              disabled={isSubmitting}
+              loading={isSubmitting}
               style={{ marginTop: 8, width: "100%", alignSelf: "stretch" }}
             />
             <BrutalButton
               title="Vytvořit účet"
               variant="yellow"
               onPress={() => router.push("/register")}
+              disabled={isSubmitting}
               style={{ marginTop: 12, width: "100%", alignSelf: "stretch" }}
             />
 
