@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,7 @@ import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import { GLOBAL_MAX, GLOBAL_MIN, SPECIAL_POS } from "@/constants/positions";
 import {
+  clearGlobalTemplate,
   createTemplate,
   deleteTemplate,
   duplicateTemplate,
@@ -94,8 +95,18 @@ export default function SablonyScreen() {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [positionPickerVisible, setPositionPickerVisible] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<Template | null>(null);
-  const [selectedPosition, setSelectedPosition] = useState<number>(1);
+  const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [isPublishingGlobal, setIsPublishingGlobal] = useState(false);
+
+  const occupiedMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const t of templates) {
+      if (t.is_global && t.global_position) {
+        map[t.global_position] = t.title;
+      }
+    }
+    return map;
+  }, [templates]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -228,9 +239,9 @@ export default function SablonyScreen() {
   };
 
   const handleLongPressPublishAll = (tpl: Template) => {
-    // FLOW 1: vzdy 1-15 pro vsechny, isGlobal state uz neni potreba
+    // FLOW 1: vzdy 1-15 pro vsechny - neoznačovat hned první
     setPendingTemplate(tpl);
-    setSelectedPosition(1);
+    setSelectedPosition(0);
     setPositionPickerVisible(true);
   };
 
@@ -241,20 +252,53 @@ export default function SablonyScreen() {
       Alert.alert("Chyba", "Pro všechny lze jen 1-15. 16 je speciální.");
       return;
     }
-    setIsPublishingGlobal(true);
-    try {
-      await publishGlobalTemplate(pendingTemplate.id, selectedPosition);
+
+    const existingTitle = occupiedMap[selectedPosition];
+    const existingTpl = templates.find(
+      (t) => t.is_global && t.global_position === selectedPosition,
+    );
+    const isSame = existingTpl?.id === pendingTemplate.id;
+
+    const doPublish = async () => {
+      setIsPublishingGlobal(true);
+      try {
+        if (existingTpl && !isSame) {
+          try {
+            await clearGlobalTemplate(existingTpl.id);
+          } catch {}
+        }
+        await publishGlobalTemplate(pendingTemplate.id, selectedPosition);
+        Alert.alert(
+          "Publikováno všem",
+          `✅ "${pendingTemplate.title}" je globální na pozici ${selectedPosition}. Bez notifikace.`,
+        );
+        setPositionPickerVisible(false);
+        setPendingTemplate(null);
+        await load();
+      } catch (e) {
+        Alert.alert("Chyba", errorMessage(e as any, "Publikování selhalo."));
+      } finally {
+        setIsPublishingGlobal(false);
+      }
+    };
+
+    if (existingTitle && !isSame) {
       Alert.alert(
-        "Publikováno všem",
-        `✅ "${pendingTemplate.title}" je globální na pozici ${selectedPosition}. Bez notifikace.`,
+        "Obsazená pozice",
+        `Opravdu chceš šablonu "${pendingTemplate.title}" umístit na pole ${selectedPosition} a tím dotazník "${existingTitle}" odebrat?`,
+        [
+          { text: "Zrušit", style: "cancel" },
+          {
+            text: "Ano, nahradit",
+            style: "destructive",
+            onPress: () => {
+              void doPublish();
+            },
+          },
+        ],
       );
-      setPositionPickerVisible(false);
-      setPendingTemplate(null);
-      await load();
-    } catch (e) {
-      Alert.alert("Chyba", errorMessage(e as any, "Publikování selhalo."));
-    } finally {
-      setIsPublishingGlobal(false);
+    } else {
+      await doPublish();
     }
   };
 
@@ -287,6 +331,11 @@ export default function SablonyScreen() {
         onPress: async () => {
           try {
             setIsLoading(true);
+            if (tpl.is_global) {
+              try {
+                await clearGlobalTemplate(tpl.id);
+              } catch {}
+            }
             await deleteTemplate(tpl.id);
             if (selectedTemplate?.id === tpl.id) setSelectedTemplate(null);
             await load();
@@ -489,18 +538,21 @@ export default function SablonyScreen() {
                     title="Zrušit výběr"
                     variant="white"
                     onPress={handleDeselect}
+                    style={{ flex: 1, minWidth: 140 }}
                   />
                 ) : (
                   <BrutalButton
                     title="Použít jako vzor"
                     variant="black"
                     onPress={() => handleSelectAsVzor(tpl)}
+                    style={{ flex: 1, minWidth: 140 }}
                   />
                 )}
                 <BrutalButton
                   title="Upravit"
                   variant="yellow"
                   onPress={() => openEdit(tpl)}
+                  style={{ flex: 1, minWidth: 140 }}
                 />
               </View>
               <View style={styles.secondaryRow}>
@@ -508,11 +560,13 @@ export default function SablonyScreen() {
                   title="Duplikovat"
                   variant="white"
                   onPress={() => handleDuplicate(tpl)}
+                  style={{ flex: 1, minWidth: 140 }}
                 />
                 <BrutalButton
                   title="Smazat"
                   variant="pink"
                   onPress={() => handleDelete(tpl)}
+                  style={{ flex: 1, minWidth: 140 }}
                 />
               </View>
               <View style={{ height: 8 }} />
@@ -840,6 +894,7 @@ export default function SablonyScreen() {
         min={GLOBAL_MIN}
         max={GLOBAL_MAX}
         confirmText={`Publikovat všem na ${selectedPosition}`}
+        occupiedMap={occupiedMap}
       />
     </SafeAreaView>
   );
@@ -905,7 +960,7 @@ const styles = StyleSheet.create({
     borderColor: "#000",
     padding: 14,
     gap: 8,
-    overflow: "hidden",
+    overflow: "visible",
     shadowColor: "#000",
     shadowOffset: { width: 6, height: 6 },
     shadowOpacity: 1,
@@ -945,7 +1000,12 @@ const styles = StyleSheet.create({
   points: { marginLeft: "auto", fontWeight: "800" },
   cardTitle: { fontSize: 17, fontWeight: "800" },
   cardDesc: { fontSize: 13, opacity: 0.7 },
-  cardActions: { flexDirection: "row", gap: 8, marginTop: 6 },
+  cardActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 8,
+  },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -957,7 +1017,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  secondaryRow: { flexDirection: "row", gap: 8 },
+  secondaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 8,
+  },
   smallBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,

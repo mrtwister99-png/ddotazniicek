@@ -1,12 +1,12 @@
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import {
-    ActivityIndicator,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 type Props = {
@@ -21,6 +21,7 @@ type Props = {
   min?: number;
   max?: number;
   confirmText?: string;
+  occupiedMap?: Record<number, string>;
 };
 
 export function PositionPicker({
@@ -35,6 +36,7 @@ export function PositionPicker({
   min = 1,
   max = 15,
   confirmText,
+  occupiedMap = {},
 }: Props) {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
@@ -87,6 +89,8 @@ export function PositionPicker({
               {Array.from({ length: max - min + 1 }, (_, i) => {
                 const pos = min + i;
                 const active = selectedPosition === pos;
+                const occupiedTitle = occupiedMap[pos];
+                const isOccupied = !!occupiedTitle;
                 return (
                   <Pressable
                     key={pos}
@@ -103,21 +107,59 @@ export function PositionPicker({
                       style={[
                         styles.tile,
                         {
-                          backgroundColor: active ? "#FFE600" : bg,
+                          backgroundColor: active
+                            ? "#FFE600"
+                            : isOccupied
+                              ? "#FFB3B3"
+                              : bg,
                           borderColor,
                           transform: [{ rotate: active ? "1deg" : "-0.8deg" }],
+                          borderWidth: isOccupied ? 4 : 3,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.text,
-                          { color: active ? "#000" : theme.text },
+                          {
+                            color: active
+                              ? "#000"
+                              : isOccupied
+                                ? "#7F1D1D"
+                                : theme.text,
+                            fontSize: isOccupied ? 18 : 20,
+                          },
                         ]}
                       >
                         {pos}
                       </Text>
+                      {isOccupied ? (
+                        <Text
+                          style={{
+                            fontSize: 7,
+                            fontWeight: "900",
+                            color: "#7F1D1D",
+                            textAlign: "center",
+                            marginTop: 2,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {occupiedTitle.slice(0, 10)}
+                        </Text>
+                      ) : null}
                       {active ? <View style={styles.activeDot} /> : null}
+                      {isOccupied && !active ? (
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: 2,
+                            right: 2,
+                            width: 6,
+                            height: 6,
+                            backgroundColor: "#DC2626",
+                          }}
+                        />
+                      ) : null}
                     </View>
                   </Pressable>
                 );

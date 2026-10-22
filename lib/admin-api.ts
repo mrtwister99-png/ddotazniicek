@@ -141,7 +141,51 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
+  try {
+    await rest(`templates?id=eq.${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_global: false, global_position: null }),
+      headers: { Prefer: "return=representation" },
+    });
+  } catch {}
+  try {
+    await rest(`template_blocks?template_id=eq.${id}`, { method: "DELETE" });
+  } catch {}
+  try {
+    await rest(`form_deliveries?template_id=eq.${id}`, { method: "DELETE" });
+  } catch {}
   await rest(`templates?id=eq.${id}`, { method: "DELETE" });
+}
+
+export async function fetchOccupiedMap(): Promise<Record<number, string>> {
+  try {
+    const rows = (await rest(
+      `templates?select=global_position,title&is_global=eq.true&not.global_position=is.null`,
+    )) as any[];
+    const map: Record<number, string> = {};
+    for (const r of rows) {
+      if (r.global_position) map[r.global_position] = r.title;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+export async function fetchOccupiedMapRpc(): Promise<Record<number, string>> {
+  try {
+    const rows = (await rest(`rpc/get_occupied_positions`, {
+      method: "POST",
+      body: "{}",
+    })) as any[];
+    const map: Record<number, string> = {};
+    for (const r of rows) {
+      if (r.position) map[r.position] = r.title;
+    }
+    return map;
+  } catch {
+    return fetchOccupiedMap();
+  }
 }
 
 export async function duplicateTemplate(id: string): Promise<Template> {

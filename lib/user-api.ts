@@ -255,6 +255,82 @@ export async function ensureDeliveryForGlobal(
   return rows[0].id;
 }
 
+export type PointsHistoryRecord = {
+  id: string;
+  date: string;
+  kind: "D" | "R";
+  name: string;
+  points: number;
+  rawDate: string;
+};
+
+export async function loadUserPointsHistory(): Promise<PointsHistoryRecord[]> {
+  const { userId } = credentials();
+  const ledgerRows = (await rest(
+    `score_ledger?select=id,points,created_at,reason,response_id&user_id=eq.${userId}&order=created_at.desc&limit=100`,
+  )) as any[];
+  const rows = asArray<any>(ledgerRows);
+  if (rows.length === 0) return [];
+
+  const responseIds = Array.from(
+    new Set(rows.map((r) => r.response_id).filter(Boolean)),
+  );
+  const responses = asArray<any>(
+    await rest(
+      `responses?select=id,delivery_id&id=in.(${responseIds.join(",")})`,
+    ),
+  );
+  const deliveryIds = Array.from(
+    new Set(responses.map((r) => r.delivery_id).filter(Boolean)),
+  );
+  const deliveryMap = new Map(responses.map((r) => [r.id, r.delivery_id]));
+
+  let deliveries: any[] = [];
+  if (deliveryIds.length > 0) {
+    deliveries = asArray<any>(
+      await rest(
+        `form_deliveries?select=id,template_id&id=in.(${deliveryIds.join(",")})`,
+      ),
+    );
+  }
+  const deliveryToTemplate = new Map(
+    deliveries.map((d) => [d.id, d.template_id]),
+  );
+  const templateIds = Array.from(
+    new Set(deliveries.map((d) => d.template_id).filter(Boolean)),
+  );
+
+  let templates: any[] = [];
+  if (templateIds.length > 0) {
+    templates = asArray<any>(
+      await rest(
+        `templates?select=id,title,category&id=in.(${templateIds.join(",")})`,
+      ),
+    );
+  }
+  const templateMap = new Map(templates.map((t) => [t.id, t]));
+
+  return rows.map((ledger) => {
+    const deliveryId = deliveryMap.get(ledger.response_id);
+    const templateId = deliveryId ? deliveryToTemplate.get(deliveryId) : null;
+    const tpl = templateId ? templateMap.get(templateId) : null;
+    const kind = tpl?.category === "advertisement" ? "R" : "D";
+    const name = tpl?.title ?? ledger.reason ?? "Neznámý úkol";
+    return {
+      id: ledger.id,
+      date: new Date(ledger.created_at).toLocaleDateString("cs-CZ", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+      kind: kind as "D" | "R",
+      name,
+      points: ledger.points,
+      rawDate: ledger.created_at,
+    };
+  });
+}
+
 export async function submitResponse(
   deliveryId: string,
   answers: Record<string, any>,

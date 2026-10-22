@@ -289,11 +289,11 @@ export default function AdminDashboard() {
           <View key={section.id ?? "general"}>
             <View style={styles.rowWrap}>
               <View style={[styles.row, styles.folderRow]}>
-                <Ionicons name="folder" size={22} color="#1F2937" />
-                <Text style={[styles.rowText, { color: "#1F2937" }]}>
+                <Ionicons name="folder" size={22} color="#FFE600" />
+                <Text style={[styles.rowText, { color: "#F9FAFB" }]}>
                   {section.name}
                 </Text>
-                <Text style={[styles.count, { color: "#1F2937" }]}>
+                <Text style={[styles.count, { color: "#F9FAFB" }]}>
                   {section.members.length}
                 </Text>
               </View>
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
                         borderWidth: 4,
                         borderColor: "#000",
                         shadowColor: "#000",
-                        shadowOffset: { width: 4, height: 4 },
+                        shadowOffset: { width: 6, height: 6 },
                         shadowOpacity: 1,
                         shadowRadius: 0,
                       },
@@ -533,12 +533,16 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 6, height: 6 },
     shadowOpacity: 1,
     shadowRadius: 0,
   },
-  folderRow: { backgroundColor: "#fff", borderWidth: 4, borderColor: "#000" },
-  userRow: { backgroundColor: "#FFE600", borderWidth: 4, borderColor: "#000" },
+  folderRow: {
+    backgroundColor: "#111827",
+    borderWidth: 4,
+    borderColor: "#000",
+  },
+  userRow: { backgroundColor: "#FFFFFF", borderWidth: 4, borderColor: "#000" },
   rowText: {
     flex: 1,
     fontSize: 16,
