@@ -1,17 +1,14 @@
+import { getAuthSession, isAdminUser } from "@/lib/auth-session";
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getAuthSession, isAdminUser } from "@/lib/auth-session";
-
-// Spodní menu admina: Dashboard / Šablony / Výsledky.
 export default function AdminLayout() {
   const auth = getAuthSession();
-
-  // Bez přihlášení (nebo bez admin práv) rovnou zpět na login.
+  const insets = useSafeAreaInsets();
   if (!auth || !isAdminUser(auth.user)) {
     return <Redirect href="/" />;
   }
-
   return (
     <Tabs
       screenOptions={{
@@ -21,9 +18,10 @@ export default function AdminLayout() {
         tabBarStyle: {
           borderTopWidth: 4,
           borderTopColor: "#000",
-          backgroundColor: "#fff",
-          height: 64,
-          paddingBottom: 8,
+          backgroundColor: "#BABABA",
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
           fontFamily: "SpaceMono-Regular",

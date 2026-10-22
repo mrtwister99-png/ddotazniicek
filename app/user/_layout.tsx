@@ -1,13 +1,13 @@
 import { getAuthSession } from "@/lib/auth-session";
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function UserLayout() {
-  // Bez přihlášení rovnou zpět na login.
+  const insets = useSafeAreaInsets();
   if (!getAuthSession()) {
     return <Redirect href="/" />;
   }
-
   return (
     <Tabs
       screenOptions={{
@@ -17,9 +17,10 @@ export default function UserLayout() {
         tabBarStyle: {
           borderTopWidth: 4,
           borderTopColor: "#000",
-          backgroundColor: "#fff",
-          height: 66,
-          paddingBottom: 8,
+          backgroundColor: "#BABABA",
+          height: 66 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
           fontFamily: "SpaceMono-Regular",

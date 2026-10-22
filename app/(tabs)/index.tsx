@@ -13,7 +13,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
+import Colors, { NEO, FONTS } from "@/constants/Colors";
+import { BrutalButton } from "@/components/BrutalButton";
+import { BrutalCard } from "@/components/BrutalCard";
 import { isAdminUser, setAuthSession } from "@/lib/auth-session";
 
 type LoginFeedback = {
@@ -127,47 +129,38 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.background }]}
-    >
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.form}>
-            <Text style={styles.title}>Přihlášení</Text>
-            <Text style={[styles.subtitle, { color: theme.text }]}>
-              Přihlaste se do Dotazníčku.
-            </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: "#BABABA" }]}>
+      <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <BrutalCard bg="#fff" style={styles.form} rotate="0.5deg">
+            <Text style={[styles.title, FONTS.brutalTitle]}>PŘIHLÁŠENÍ</Text>
+            <Text style={[styles.subtitle, { color: "#000", ...FONTS.mono }]}>Přihlas se do Dotazníčku.</Text>
 
             <View style={styles.field}>
-              <Text style={styles.label}>E-mail nebo přezdívka</Text>
-              <TextInput
-                accessibilityLabel="E-mail nebo přezdívka"
-                autoCapitalize="none"
-                autoComplete="username"
-                autoCorrect={false}
-                keyboardType="email-address"
-                onChangeText={setIdentifier}
-                onSubmitEditing={() => passwordInput.current?.focus()}
-                placeholder="Zadejte e-mail nebo přezdívku"
-                placeholderTextColor={colorScheme === "dark" ? "#aaa" : "#666"}
-                returnKeyType="next"
-                style={[
-                  styles.input,
-                  { borderColor: theme.tabIconDefault, color: theme.text },
-                ]}
-                value={identifier}
-              />
+              <Text style={[styles.label, FONTS.brutalTitle]}>E-mail nebo přezdívka</Text>
+              <View style={styles.inputWrap}>
+                <View style={[styles.inputShadow, { backgroundColor: NEO.black }]} />
+                <TextInput
+                  accessibilityLabel="E-mail nebo přezdívka"
+                  autoCapitalize="none"
+                  autoComplete="username"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  onChangeText={setIdentifier}
+                  onSubmitEditing={() => passwordInput.current?.focus()}
+                  placeholder="Zadejte e-mail nebo přezdívku"
+                  placeholderTextColor="#666"
+                  returnKeyType="next"
+                  style={[styles.input, { borderColor: NEO.black, color: "#000" }]}
+                  value={identifier}
+                />
+              </View>
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Heslo</Text>
-              <View style={styles.passwordInputContainer}>
+              <Text style={[styles.label, FONTS.brutalTitle]}>Heslo</Text>
+              <View style={styles.inputWrap}>
+                <View style={[styles.inputShadow, { backgroundColor: NEO.black }]} />
                 <TextInput
                   ref={passwordInput}
                   accessibilityLabel="Heslo"
@@ -175,16 +168,10 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   onSubmitEditing={handleLogin}
                   placeholder="Zadejte heslo"
-                  placeholderTextColor={
-                    colorScheme === "dark" ? "#aaa" : "#666"
-                  }
+                  placeholderTextColor="#666"
                   returnKeyType="done"
                   secureTextEntry={!isPasswordVisible}
-                  style={[
-                    styles.input,
-                    styles.passwordInput,
-                    { borderColor: theme.tabIconDefault, color: theme.text },
-                  ]}
+                  style={[styles.input, styles.passwordInput, { borderColor: NEO.black, color: "#000" }]}
                   value={password}
                 />
                 <Pressable
@@ -194,42 +181,13 @@ export default function LoginScreen() {
                   onPressOut={() => setIsPasswordVisible(false)}
                   style={styles.passwordVisibilityButton}
                 >
-                  <Ionicons
-                    name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color={theme.text}
-                  />
+                  <Ionicons name={isPasswordVisible ? "eye-off-outline" : "eye-outline"} size={22} color="#000" />
                 </Pressable>
               </View>
             </View>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{
-                disabled: isSubmitting || password.length === 0,
-              }}
-              disabled={isSubmitting || password.length === 0}
-              onPress={handleLogin}
-              style={({ pressed }) => [
-                styles.button,
-                { backgroundColor: pressed ? "#115E59" : "#0F766E" },
-                (isSubmitting || password.length === 0) &&
-                  styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.buttonText}>
-                {isSubmitting ? "Přihlašuji…" : "Přihlásit se"}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSubmitting}
-              onPress={() => router.push("/register")}
-              style={[styles.secondaryButton, { borderColor: "#0F766E" }]}
-            >
-              <Text style={styles.secondaryButtonText}>Vytvořit účet</Text>
-            </Pressable>
+            <BrutalButton title={isSubmitting ? "Přihlašuji…" : "Přihlásit se"} variant="black" onPress={handleLogin} style={{ marginTop: 8 }} />
+            <BrutalButton title="Vytvořit účet" variant="yellow" onPress={() => router.push("/register")} style={{ marginTop: 12 }} />
 
             {feedback ? (
               <Text
@@ -259,46 +217,17 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  form: {
-    alignSelf: "center",
-    maxWidth: 440,
-    width: "100%",
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 32,
-  },
-  field: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  input: {
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    minHeight: 52,
-    paddingHorizontal: 14,
-  },
+  safeArea: { flex: 1 },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "center", padding: 24, backgroundColor: "#BABABA" },
+  form: { alignSelf: "center", maxWidth: 440, width: "100%" },
+  title: { fontSize: 30, marginBottom: 8 },
+  subtitle: { fontSize: 14, marginBottom: 24, fontFamily: "SpaceMono-Regular" },
+  field: { marginBottom: 18 },
+  label: { fontSize: 13, marginBottom: 8 },
+  inputWrap: { position: "relative" },
+  inputShadow: { position: "absolute", top: 4, left: 4, right: -3, bottom: -3 },
+  input: { borderRadius: 0, borderWidth: 3, fontSize: 16, minHeight: 52, paddingHorizontal: 14, backgroundColor: "#fff", fontFamily: "SpaceMono-Regular" },
   passwordInputContainer: {
     justifyContent: "center",
   },

@@ -28,9 +28,9 @@ export const FONTS = {
 export default {
   light: {
     text: "#000",
-    background: "#fff",
+    background: "#BABABA",
     tint: tintColorLight,
-    tabIconDefault: "#ccc",
+    tabIconDefault: "#000",
     tabIconSelected: NEO.yellow,
     neo: NEO,
     yellow: NEO.yellow,
@@ -38,14 +38,14 @@ export default {
     fonts: FONTS,
   },
   dark: {
-    text: "#fff",
-    background: "#000",
+    text: "#000",
+    background: "#BABABA",
     tint: tintColorDark,
-    tabIconDefault: "#ccc",
+    tabIconDefault: "#000",
     tabIconSelected: NEO.yellow,
     neo: NEO,
     yellow: NEO.yellow,
-    border: NEO.white,
+    border: NEO.black,
     fonts: FONTS,
   },
 };
