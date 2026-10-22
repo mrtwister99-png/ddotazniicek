@@ -22,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.krypl651.dotaznicek"
     },
     "web": {
       "bundler": "metro",
@@ -31,12 +32,12 @@
     },
     "plugins": [
       "expo-router",
+      "expo-system-ui",
       [
         "react-native-google-mobile-ads",
         {
-          "android_app_id": "ca-app-pub-3940256099942544~3347511713",
-          "ios_app_id": "ca-app-pub-3940256099942544~1458002511",
-          "user_tracking_usage_phrase": "Tato aplikace pouziva reklamy pro podporu vyvoje"
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ]
     ],

@@ -89,7 +89,7 @@ export default function UserHomeScreen() {
         }
     }
   }
-  const slots = 16; // 1-15 normal, 16 = X červený vedle 15ky, pak S, pak O oprava
+  const slots = 20; // 1-15 normal, 16 = speciál, 17-20 = reklamy
 
   const hasNew = tasks.some((task) => task.isNew);
   const lightColor = hasNew ? "#DC2626" : "#16A34A";
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 8,
   },
-  brutalSquareWrap: { position: "relative", marginTop: 24, width: "100%" },
+  brutalSquareWrap: { position: "relative", marginTop: 48, width: "100%" },
   brutalSquareShadow: {
     position: "absolute",
     top: 8,
