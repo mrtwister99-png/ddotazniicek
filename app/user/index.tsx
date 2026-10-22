@@ -70,20 +70,24 @@ export default function UserHomeScreen() {
   const gridWidth = Math.min(width, 440) - 32;
   const tile = Math.floor((gridWidth - GAP * (COLUMNS - 1)) / COLUMNS);
   const tasks = home?.tasks ?? [];
-  const specialTasks = tasks.filter((t: any) => (t as any).is_ephemeral);
-  const gridTasks = tasks.filter((t: any) => !(t as any).is_ephemeral);
+  const specialTasks = tasks.filter(
+    (t: any) => (t as any).is_ephemeral || t.position === 16,
+  );
+  const gridTasks = tasks.filter(
+    (t: any) => !(t as any).is_ephemeral && t.position !== 16,
+  );
   const tasksByPos = new Map<number, (typeof gridTasks)[number]>();
   for (const t of gridTasks) {
-    if (t.position >= 1 && t.position <= 16) tasksByPos.set(t.position, t);
+    if (t.position >= 1 && t.position <= 15) tasksByPos.set(t.position, t);
     else if (t.position === 0) {
-      for (let p = 1; p <= 16; p++)
+      for (let p = 1; p <= 15; p++)
         if (!tasksByPos.has(p)) {
           tasksByPos.set(p, { ...t, position: p });
           break;
         }
     }
   }
-  const slots = 16;
+  const slots = 15; // 1-15 normal, 16 je specialni
 
   const hasNew = tasks.some((task) => task.isNew);
   const lightColor = hasNew ? "#DC2626" : "#16A34A";
@@ -106,7 +110,13 @@ export default function UserHomeScreen() {
     (async () => {
       setIsDetailLoading(true);
       try {
-        const detail = await loadDeliveryDetail(ephemeralTask.id);
+        let deliveryId = ephemeralTask.id;
+        if (deliveryId.startsWith("global-")) {
+          // global sablona - vytvor delivery on-demand
+          const { ensureDeliveryForGlobal } = await import("@/lib/user-api");
+          deliveryId = await ensureDeliveryForGlobal(ephemeralTask.templateId);
+        }
+        const detail = await loadDeliveryDetail(deliveryId);
         if (!cancelled) {
           setEphemeralDetail(detail);
           setAnswers({});

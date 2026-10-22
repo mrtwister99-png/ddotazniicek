@@ -1,4 +1,9 @@
-import { credentials, rest } from "@/lib/admin-api";
+import { asArray, credentials, rest } from "@/lib/supabase-rest";
+
+function asArrayOld<T>(value: unknown): T[] {
+  if (!Array.isArray(value)) throw new Error("bad-response");
+  return value as T[];
+}
 
 export type Task = {
   id: string;
@@ -63,11 +68,6 @@ type DeliveryRow = {
       }[]
     | null;
 };
-
-function asArray<T>(value: unknown): T[] {
-  if (!Array.isArray(value)) throw new Error("bad-response");
-  return value as T[];
-}
 
 // Vše, co potřebuje domovská obrazovka uživatele. Data hlídá RLS (uživatel vidí jen své).
 export async function loadUserHome(): Promise<UserHome> {
@@ -200,6 +200,38 @@ export async function loadDeliveryDetail(
     },
     blocks,
   };
+}
+
+export async function ensureDeliveryForGlobal(
+  templateId: string,
+): Promise<string> {
+  const { userId, baseUrl, anonKey, token } = credentials();
+  // zkontroluj jestli uz nemam delivery pro tuhle global sablonu
+  const existing = await rest(
+    `form_deliveries?select=id&template_id=eq.${templateId}&user_id=eq.${userId}&status=neq.cancelled&limit=1`,
+  );
+  const arr = existing as any[];
+  if (arr.length > 0) return arr[0].id;
+  // vytvor novou
+  const res = await fetch(`${baseUrl}/rest/v1/form_deliveries`, {
+    method: "POST",
+    body: JSON.stringify({
+      template_id: templateId,
+      user_id: userId,
+      sent_by: userId,
+      status: "sent",
+      position: null,
+      is_ephemeral: false,
+    }),
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+  });
+  const rows = await res.json();
+  return rows[0].id;
 }
 
 export async function submitResponse(

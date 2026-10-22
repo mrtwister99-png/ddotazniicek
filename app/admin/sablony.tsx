@@ -12,9 +12,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { PositionPicker } from "@/components/PositionPicker";
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
+import { GLOBAL_MAX, GLOBAL_MIN, SPECIAL_POS } from "@/constants/positions";
 import {
   createTemplate,
   deleteTemplate,
@@ -214,62 +216,57 @@ export default function SablonyScreen() {
   };
 
   const handleSelectAsVzor = (tpl: Template) => {
-    setIsGlobalPublishMode(false);
-    setPendingTemplate(tpl);
-    setSelectedPosition(selectedTemplate?.position ?? 1);
-    setPositionPickerVisible(true);
+    // FLOW 2 NOVY: vzor = VZDY 16, bez modalu, jen vyberes uzivatele v Dashboardu
+    setSelectedTemplate({
+      id: tpl.id,
+      title: tpl.title,
+      description: tpl.description,
+      points: tpl.points,
+      category: tpl.category,
+      status: tpl.status,
+      position: 16,
+    });
+    Alert.alert(
+      "Vzor vybrán na 16",
+      `"${tpl.title}" bude poslán vybraným uživatelům na speciální pozici 16. Jdi na Dashboard.`,
+    );
   };
 
   const handleLongPressPublishAll = (tpl: Template) => {
+    // FLOW 1 NOVY: podrzim = 1-15 pro vsechny
     setIsGlobalPublishMode(true);
     setPendingTemplate(tpl);
     setSelectedPosition(1);
     setPositionPickerVisible(true);
   };
 
-  const confirmSelectAsVzor = () => {
-    if (!pendingTemplate) return;
-    setSelectedTemplate({
-      id: pendingTemplate.id,
-      title: pendingTemplate.title,
-      description: pendingTemplate.description,
-      points: pendingTemplate.points,
-      category: pendingTemplate.category,
-      status: pendingTemplate.status,
-      position: selectedPosition,
-    });
-    setPositionPickerVisible(false);
-    setPendingTemplate(null);
-    setIsGlobalPublishMode(false);
-  };
-
   const confirmPublishToAll = async () => {
     if (!pendingTemplate) return;
     if (isPublishingGlobal) return;
+    if (selectedPosition < 1 || selectedPosition > 15) {
+      Alert.alert("Chyba", "Pro všechny lze jen 1-15. 16 je speciální.");
+      return;
+    }
     setIsPublishingGlobal(true);
     try {
       await publishGlobalTemplate(pendingTemplate.id, selectedPosition);
       Alert.alert(
-        "Publikováno všem (bez notifikace)",
-        `✅ Dotazník "${pendingTemplate.title}" je nyní globální na pozici ${selectedPosition}. DB ušetřena, žádný push neodešel.`,
+        "Publikováno všem",
+        `✅ "${pendingTemplate.title}" je globální na pozici ${selectedPosition}. Bez notifikace.`,
       );
       setPositionPickerVisible(false);
       setPendingTemplate(null);
       setIsGlobalPublishMode(false);
       await load();
     } catch (e) {
-      Alert.alert("Chyba", errorMessage(e as any, "Publikování všem selhalo."));
+      Alert.alert("Chyba", errorMessage(e as any, "Publikování selhalo."));
     } finally {
       setIsPublishingGlobal(false);
     }
   };
 
   const handlePositionConfirm = () => {
-    if (isGlobalPublishMode) {
-      void confirmPublishToAll();
-    } else {
-      confirmSelectAsVzor();
-    }
+    void confirmPublishToAll();
   };
 
   const handleDeselect = () => {
@@ -453,6 +450,13 @@ export default function SablonyScreen() {
                     {CATEGORY_LABEL[tpl.category]}
                   </Text>
                 </View>
+                {tpl.is_global ? (
+                  <View style={[styles.badge, { backgroundColor: "#10B981" }]}>
+                    <Text style={styles.badgeText}>
+                      GLOBAL {tpl.global_position}
+                    </Text>
+                  </View>
+                ) : null}
                 <View
                   style={[
                     styles.statusBadge,
@@ -526,7 +530,8 @@ export default function SablonyScreen() {
                 </Pressable>
               </View>
               <Text style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
-                Podrž pro publikaci všem na pozici
+                Podrž pro publikaci všem na 1-15 · Klik Použít jako vzor =
+                pozice 16 pro vybrané
               </Text>
             </Pressable>
           );
@@ -847,76 +852,22 @@ export default function SablonyScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <Modal
+      <PositionPicker
         visible={positionPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setPositionPickerVisible(false)}
-      >
-        <View style={styles.positionBackdrop}>
-          <View
-            style={[styles.positionCard, { backgroundColor: theme.background }]}
-          >
-            <Text style={styles.positionTitle}>
-              {isGlobalPublishMode
-                ? "Publikovat VŠEM na pozici 1-16"
-                : "Vyber pozici 1-16 (4x4)"}
-            </Text>
-            <Text style={styles.positionSub}>
-              {pendingTemplate?.title} · {pendingTemplate?.points}b{" "}
-              {isGlobalPublishMode ? "· VŠEM UŽIVATELŮM" : ""}
-            </Text>
-            <View style={styles.positionGrid}>
-              {Array.from({ length: 16 }, (_, i) => {
-                const pos = i + 1;
-                const isActive = selectedPosition === pos;
-                return (
-                  <Pressable
-                    key={pos}
-                    onPress={() => setSelectedPosition(pos)}
-                    style={[styles.posTile, isActive && styles.posTileActive]}
-                  >
-                    <Text
-                      style={[styles.posText, isActive && styles.posTextActive]}
-                    >
-                      {pos}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <View style={styles.positionActions}>
-              <Pressable
-                onPress={() => {
-                  setPositionPickerVisible(false);
-                  setIsGlobalPublishMode(false);
-                }}
-                style={styles.positionCancel}
-              >
-                <Text style={styles.positionCancelText}>Zrušit</Text>
-              </Pressable>
-              <Pressable
-                onPress={handlePositionConfirm}
-                disabled={isPublishingGlobal}
-                style={[
-                  styles.positionConfirm,
-                  isPublishingGlobal && { opacity: 0.6 },
-                ]}
-              >
-                {isPublishingGlobal ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.positionConfirmText}>
-                    {isGlobalPublishMode
-                      ? `Publikovat všem na ${selectedPosition}`
-                      : `Potvrdit pozici ${selectedPosition}`}
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title={`Publikovat VŠEM na pozici ${GLOBAL_MIN}-${GLOBAL_MAX}`}
+        sub={`${pendingTemplate?.title ?? ""} · ${pendingTemplate?.points ?? ""}b · VŠEM · ${SPECIAL_POS} je speciální`}
+        selectedPosition={selectedPosition}
+        onSelect={setSelectedPosition}
+        onConfirm={handlePositionConfirm}
+        onCancel={() => {
+          setPositionPickerVisible(false);
+          setIsGlobalPublishMode(false);
+        }}
+        isLoading={isPublishingGlobal}
+        min={GLOBAL_MIN}
+        max={GLOBAL_MAX}
+        confirmText={`Publikovat všem na ${selectedPosition}`}
+      />
     </SafeAreaView>
   );
 }

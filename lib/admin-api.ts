@@ -1,4 +1,10 @@
-import { getAuthSession } from "@/lib/auth-session";
+import { GLOBAL_MAX, GLOBAL_MIN } from "@/constants/positions";
+import {
+  asArray,
+  credentials,
+  rest,
+  restWithPreferReturn,
+} from "@/lib/supabase-rest";
 
 export type Person = {
   id: string;
@@ -38,68 +44,6 @@ export type TemplateBlock = {
 
 export type DeliveryCreateResult = { created: number; failedPush?: number };
 
-export function credentials() {
-  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
-  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-  const auth = getAuthSession();
-  const token = (auth?.session as { access_token?: unknown } | undefined)
-    ?.access_token;
-  const userId = (auth?.user as { id?: unknown } | undefined)?.id;
-  if (
-    !baseUrl ||
-    !anonKey ||
-    typeof token !== "string" ||
-    typeof userId !== "string"
-  ) {
-    throw new Error("not-configured");
-  }
-  return { baseUrl, anonKey, token, userId };
-}
-
-export async function rest(
-  path: string,
-  init: {
-    method?: string;
-    body?: string;
-    headers?: Record<string, string>;
-  } = {},
-): Promise<unknown> {
-  const { baseUrl, anonKey, token } = credentials();
-  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
-    method: init.method ?? "GET",
-    body: init.body,
-    headers: {
-      Accept: "application/json",
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Prefer: init.method === "POST" ? "return=representation" : "",
-      ...init.headers,
-    },
-  });
-  if (!response.ok) {
-    const txt = await response.text().catch(() => "");
-    throw new Error(`http-${response.status}:${txt.slice(0, 200)}`);
-  }
-  return response.status === 204 ? null : response.json();
-}
-
-async function restWithPreferReturn(
-  path: string,
-  body: string,
-): Promise<unknown> {
-  return rest(path, {
-    method: "POST",
-    body,
-    headers: { Prefer: "return=representation" },
-  });
-}
-
-function asArray<T>(value: unknown): T[] {
-  if (!Array.isArray(value)) throw new Error("bad-response");
-  return value as T[];
-}
-
 export async function loadDirectory(): Promise<Directory> {
   const { userId } = credentials();
   const [folders, people, memberships] = await Promise.all([
@@ -136,7 +80,7 @@ export async function loadTemplateDetail(
 ): Promise<{ template: Template; blocks: TemplateBlock[] }> {
   const [tRows, bRows] = await Promise.all([
     rest(
-      `templates?select=id,title,description,points,status,category,created_at,created_by&id=eq.${id}`,
+      `templates?select=id,title,description,points,status,category,created_at,created_by,is_global,global_position&id=eq.${id}`,
     ),
     rest(
       `template_blocks?select=id,template_id,position,kind,content,is_required,image_path&template_id=eq.${id}&order=position.asc`,
@@ -259,11 +203,22 @@ export async function setGlobalTemplate(
   position: number,
   isGlobal: boolean,
 ): Promise<Template> {
-  if (position < 1 || position > 16) throw new Error("bad-position");
+  if (position < GLOBAL_MIN || position > GLOBAL_MAX)
+    throw new Error("bad-position");
   return updateTemplate(templateId, {
-    // @ts-ignore - nove sloupce po migraci
+    // @ts-ignore
     is_global: isGlobal,
     global_position: isGlobal ? position : null,
+  } as any);
+}
+
+export async function clearGlobalTemplate(
+  templateId: string,
+): Promise<Template> {
+  return updateTemplate(templateId, {
+    // @ts-ignore
+    is_global: false,
+    global_position: null,
   } as any);
 }
 
@@ -305,7 +260,6 @@ export async function createDeliveries(
   let failedPush = 0;
   try {
     const pushBase = `${baseUrl}/functions/v1/send-ephemeral-notification`;
-    // nacist kategorii pro spravnou URL
     const tRows = await rest(`templates?select=category&id=eq.${templateId}`);
     const cat = (tRows as any)[0]?.category ?? "questionnaire";
     const routePrefix =
@@ -314,9 +268,9 @@ export async function createDeliveries(
         : cat === "special_questionnaire"
           ? "specialni-dotaznik"
           : "dotaznik";
-    for (const row of createdRows) {
-      try {
-        const res = await fetch(pushBase, {
+    const results = await Promise.allSettled(
+      createdRows.map((row) =>
+        fetch(pushBase, {
           method: "POST",
           headers: {
             apikey: anonKey,
@@ -329,12 +283,12 @@ export async function createDeliveries(
             message: `Nový úkol: ${row.template_id}`,
             url: `/${routePrefix}/${row.id}`,
           }),
-        });
-        if (!res.ok) failedPush++;
-      } catch {
-        failedPush++;
-      }
-    }
+        }).then((r) => {
+          if (!r.ok) throw new Error("push-failed");
+        }),
+      ),
+    );
+    failedPush = results.filter((r) => r.status === "rejected").length;
   } catch {
     failedPush = createdRows.length;
   }
@@ -348,20 +302,12 @@ export async function loadAllUserIds(): Promise<string[]> {
   return asArray<{ id: string }>(rows).map((r) => r.id);
 }
 
-export async function publishTemplateToAll(
-  templateId: string,
-  position: number,
-): Promise<DeliveryCreateResult> {
-  // Flow 1 = tichy global, zadna notifikace, zadne N delivery radku
-  return { created: 1, failedPush: 0 };
-}
-
 export async function publishGlobalTemplate(
   templateId: string,
   position: number,
 ): Promise<Template> {
-  if (position < 1 || position > 16) throw new Error("bad-position");
-  // jen oznacit sablonu jako globalni, klient ji cte primo
+  if (position < GLOBAL_MIN || position > GLOBAL_MAX)
+    throw new Error("bad-position");
   return setGlobalTemplate(templateId, position, true);
 }
 
