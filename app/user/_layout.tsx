@@ -12,27 +12,27 @@ export default function UserLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: "#000",
         tabBarActiveBackgroundColor: "#FFE600",
         tabBarStyle: {
           borderTopWidth: 4,
           borderTopColor: "#000",
           backgroundColor: "#BABABA",
-          height: 66 + insets.bottom,
+          height: 72 + insets.bottom,
           paddingBottom: insets.bottom + 8,
-          paddingTop: 4,
-        },
-        tabBarLabelStyle: {
-          fontFamily: "SpaceMono-Regular",
-          fontWeight: "900",
-          fontSize: 10,
-          textTransform: "uppercase",
+          paddingTop: 6,
         },
         tabBarItemStyle: {
-          borderWidth: 3,
+          borderWidth: 4,
           borderColor: "#000",
-          margin: 3,
+          margin: 5,
           borderRadius: 0,
+          backgroundColor: "#fff",
+          shadowColor: "#000",
+          shadowOffset: { width: 3, height: 3 },
+          shadowOpacity: 1,
+          shadowRadius: 0,
         },
       }}
     >

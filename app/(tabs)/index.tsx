@@ -11,11 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Text, View } from "@/components/Themed";
-import { useColorScheme } from "@/components/useColorScheme";
-import Colors, { NEO, FONTS } from "@/constants/Colors";
 import { BrutalButton } from "@/components/BrutalButton";
 import { BrutalCard } from "@/components/BrutalCard";
+import { Text, View } from "@/components/Themed";
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors, { FONTS, NEO } from "@/constants/Colors";
 import { isAdminUser, setAuthSession } from "@/lib/auth-session";
 
 type LoginFeedback = {
@@ -130,16 +130,28 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: "#BABABA" }]}>
-      <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <BrutalCard bg="#fff" style={styles.form} rotate="0.5deg">
             <Text style={[styles.title, FONTS.brutalTitle]}>PŘIHLÁŠENÍ</Text>
-            <Text style={[styles.subtitle, { color: "#000", ...FONTS.mono }]}>Přihlas se do Dotazníčku.</Text>
+            <Text style={[styles.subtitle, { color: "#000", ...FONTS.mono }]}>
+              Přihlas se do Dotazníčku.
+            </Text>
 
             <View style={styles.field}>
-              <Text style={[styles.label, FONTS.brutalTitle]}>E-mail nebo přezdívka</Text>
+              <Text style={[styles.label, FONTS.brutalTitle]}>
+                E-mail nebo přezdívka
+              </Text>
               <View style={styles.inputWrap}>
-                <View style={[styles.inputShadow, { backgroundColor: NEO.black }]} />
+                <View
+                  style={[styles.inputShadow, { backgroundColor: NEO.black }]}
+                />
                 <TextInput
                   accessibilityLabel="E-mail nebo přezdívka"
                   autoCapitalize="none"
@@ -151,7 +163,10 @@ export default function LoginScreen() {
                   placeholder="Zadejte e-mail nebo přezdívku"
                   placeholderTextColor="#666"
                   returnKeyType="next"
-                  style={[styles.input, { borderColor: NEO.black, color: "#000" }]}
+                  style={[
+                    styles.input,
+                    { borderColor: NEO.black, color: "#000" },
+                  ]}
                   value={identifier}
                 />
               </View>
@@ -160,7 +175,9 @@ export default function LoginScreen() {
             <View style={styles.field}>
               <Text style={[styles.label, FONTS.brutalTitle]}>Heslo</Text>
               <View style={styles.inputWrap}>
-                <View style={[styles.inputShadow, { backgroundColor: NEO.black }]} />
+                <View
+                  style={[styles.inputShadow, { backgroundColor: NEO.black }]}
+                />
                 <TextInput
                   ref={passwordInput}
                   accessibilityLabel="Heslo"
@@ -171,7 +188,11 @@ export default function LoginScreen() {
                   placeholderTextColor="#666"
                   returnKeyType="done"
                   secureTextEntry={!isPasswordVisible}
-                  style={[styles.input, styles.passwordInput, { borderColor: NEO.black, color: "#000" }]}
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    { borderColor: NEO.black, color: "#000" },
+                  ]}
                   value={password}
                 />
                 <Pressable
@@ -181,13 +202,27 @@ export default function LoginScreen() {
                   onPressOut={() => setIsPasswordVisible(false)}
                   style={styles.passwordVisibilityButton}
                 >
-                  <Ionicons name={isPasswordVisible ? "eye-off-outline" : "eye-outline"} size={22} color="#000" />
+                  <Ionicons
+                    name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#000"
+                  />
                 </Pressable>
               </View>
             </View>
 
-            <BrutalButton title={isSubmitting ? "Přihlašuji…" : "Přihlásit se"} variant="black" onPress={handleLogin} style={{ marginTop: 8 }} />
-            <BrutalButton title="Vytvořit účet" variant="yellow" onPress={() => router.push("/register")} style={{ marginTop: 12 }} />
+            <BrutalButton
+              title={isSubmitting ? "Přihlašuji…" : "Přihlásit se"}
+              variant="black"
+              onPress={handleLogin}
+              style={{ marginTop: 8, width: "100%", alignSelf: "stretch" }}
+            />
+            <BrutalButton
+              title="Vytvořit účet"
+              variant="yellow"
+              onPress={() => router.push("/register")}
+              style={{ marginTop: 12, width: "100%", alignSelf: "stretch" }}
+            />
 
             {feedback ? (
               <Text
@@ -195,21 +230,14 @@ export default function LoginScreen() {
                 style={[
                   styles.feedback,
                   {
-                    color:
-                      feedback.type === "error"
-                        ? colorScheme === "dark"
-                          ? "#FDA29B"
-                          : "#B42318"
-                        : colorScheme === "dark"
-                          ? "#6CE9A6"
-                          : "#067647",
+                    color: feedback.type === "error" ? "#FDA29B" : "#B42318",
                   },
                 ]}
               >
                 {feedback.message}
               </Text>
             ) : null}
-          </View>
+          </BrutalCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -219,7 +247,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: "center", padding: 24, backgroundColor: "#BABABA" },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "#BABABA",
+  },
   form: { alignSelf: "center", maxWidth: 440, width: "100%" },
   title: { fontSize: 30, marginBottom: 8 },
   subtitle: { fontSize: 14, marginBottom: 24, fontFamily: "SpaceMono-Regular" },
@@ -227,7 +260,15 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, marginBottom: 8 },
   inputWrap: { position: "relative" },
   inputShadow: { position: "absolute", top: 4, left: 4, right: -3, bottom: -3 },
-  input: { borderRadius: 0, borderWidth: 3, fontSize: 16, minHeight: 52, paddingHorizontal: 14, backgroundColor: "#fff", fontFamily: "SpaceMono-Regular" },
+  input: {
+    borderRadius: 0,
+    borderWidth: 3,
+    fontSize: 16,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
+    fontFamily: "SpaceMono-Regular",
+  },
   passwordInputContainer: {
     justifyContent: "center",
   },

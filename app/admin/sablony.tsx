@@ -43,19 +43,13 @@ type BlockDraft = {
 
 const CATEGORY_LABEL: Record<Template["category"], string> = {
   questionnaire: "D · dotazník",
-  advertisement: "R · reklama",
   special_questionnaire: "S · speciál",
-};
+} as any;
 const CATEGORY_COLOR: Record<Template["category"], string> = {
   questionnaire: "#0F766E",
-  advertisement: "#7C3AED",
   special_questionnaire: "#D97706",
-};
-const STATUS_LABEL: Record<Template["status"], string> = {
-  draft: "koncept",
-  published: "publikováno",
-  archived: "archiv",
-};
+} as any;
+// STATUS ZRUŠEN - brutalism: vždy publikováno, žádný výběr
 
 function emptyBlocks(): BlockDraft[] {
   return [
@@ -352,9 +346,36 @@ export default function SablonyScreen() {
           <Text style={styles.kicker}>SPRÁVA · ŠABLONY</Text>
           <Text style={styles.title}>Vzor dotazníku</Text>
         </View>
-        <Pressable onPress={openCreate} style={styles.addBtn}>
-          <Ionicons name="add" size={28} color="#fff" />
-        </Pressable>
+        <View style={{ position: "relative" }}>
+          <View
+            style={{
+              position: "absolute",
+              top: 6,
+              left: 6,
+              width: 48,
+              height: 48,
+              backgroundColor: "#000",
+            }}
+          />
+          <Pressable
+            onPress={openCreate}
+            style={[
+              styles.addBtn,
+              {
+                backgroundColor: "#FFE600",
+                borderWidth: 4,
+                borderColor: "#000",
+                borderRadius: 0,
+                shadowColor: "#000",
+                shadowOffset: { width: 6, height: 6 },
+                shadowOpacity: 1,
+                shadowRadius: 0,
+              },
+            ]}
+          >
+            <Ionicons name="add" size={28} color="#000" />
+          </Pressable>
+        </View>
       </View>
 
       {selectedTemplate ? (
@@ -389,19 +410,7 @@ export default function SablonyScreen() {
             <Ionicons name="close-circle" size={22} color="#DC2626" />
           </Pressable>
         </View>
-      ) : (
-        <View
-          style={[
-            styles.currentVzor,
-            { backgroundColor: "#FEF3C7", borderColor: "#F59E0B" },
-          ]}
-        >
-          <Text style={styles.currentSub}>
-            Žádný vzor není vybraný. Vyber jeden níže — pak se ti odemkne
-            Odeslat na Dashboardu.
-          </Text>
-        </View>
-      )}
+      ) : null}
 
       {isLoading && templates.length === 0 ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
@@ -440,8 +449,8 @@ export default function SablonyScreen() {
               ) : null}
               <View style={styles.cardHeader}>
                 <BrutalBadge
-                  label={CATEGORY_LABEL[tpl.category]}
-                  bg={CATEGORY_COLOR[tpl.category]}
+                  label={CATEGORY_LABEL[tpl.category] ?? tpl.category}
+                  bg={CATEGORY_COLOR[tpl.category] ?? "#000"}
                   color="#fff"
                   rotate="-1deg"
                 />
@@ -453,21 +462,21 @@ export default function SablonyScreen() {
                     rotate="1deg"
                   />
                 ) : null}
-                <View
+                <Text
                   style={[
-                    styles.statusBadge,
-                    tpl.status === "published"
-                      ? styles.published
-                      : tpl.status === "archived"
-                        ? styles.archived
-                        : styles.draft,
+                    styles.points,
+                    {
+                      fontFamily: "SpaceMono-Regular",
+                      fontWeight: "900",
+                      borderWidth: 3,
+                      borderColor: "#000",
+                      backgroundColor: "#FFE600",
+                      paddingHorizontal: 6,
+                    },
                   ]}
                 >
-                  <Text style={styles.statusText}>
-                    {STATUS_LABEL[tpl.status]}
-                  </Text>
-                </View>
-                <Text style={styles.points}>{tpl.points}b</Text>
+                  {tpl.points}b
+                </Text>
               </View>
               <Text style={styles.cardTitle}>{tpl.title}</Text>
               {tpl.description ? (
@@ -506,10 +515,7 @@ export default function SablonyScreen() {
                   onPress={() => handleDelete(tpl)}
                 />
               </View>
-              <Text style={{ fontSize: 10, opacity: 0.5, marginTop: 6 }}>
-                Podrž pro publikaci všem na 1-15 · Klik Použít jako vzor =
-                pozice 16 pro vybrané
-              </Text>
+              <View style={{ height: 8 }} />
             </Pressable>
           );
         })}
@@ -585,65 +591,56 @@ export default function SablonyScreen() {
                 { borderColor: theme.tabIconDefault, color: theme.text },
               ]}
             />
-            <View style={styles.row2}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Body</Text>
-                <TextInput
-                  value={points}
-                  onChangeText={setPoints}
-                  keyboardType="number-pad"
-                  style={[
-                    styles.input,
-                    { borderColor: theme.tabIconDefault, color: theme.text },
-                  ]}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Status</Text>
-                <View style={styles.chipRow}>
-                  {(["draft", "published", "archived"] as const).map((s) => (
-                    <Pressable
-                      key={s}
-                      onPress={() => setStatus(s)}
-                      style={[styles.chip, status === s && styles.chipActive]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          status === s && styles.chipActiveText,
-                        ]}
-                      >
-                        {STATUS_LABEL[s]}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Body</Text>
+              <TextInput
+                value={points}
+                onChangeText={setPoints}
+                keyboardType="number-pad"
+                style={[
+                  styles.input,
+                  {
+                    borderColor: "#000",
+                    color: theme.text,
+                    borderWidth: 4,
+                    borderRadius: 0,
+                    backgroundColor: "#fff",
+                  },
+                ]}
+              />
             </View>
             <Text style={styles.label}>Kategorie</Text>
             <View style={styles.chipRow}>
-              {(
-                [
-                  "questionnaire",
-                  "advertisement",
-                  "special_questionnaire",
-                ] as const
-              ).map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => setCategory(c)}
-                  style={[styles.chip, category === c && styles.chipActive]}
-                >
-                  <Text
+              {(["questionnaire", "special_questionnaire"] as const).map(
+                (c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCategory(c)}
                     style={[
-                      styles.chipText,
-                      category === c && styles.chipActiveText,
+                      styles.chip,
+                      category === c && styles.chipActive,
+                      {
+                        borderWidth: 4,
+                        borderColor: "#000",
+                        borderRadius: 0,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 4, height: 4 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                      },
                     ]}
                   >
-                    {CATEGORY_LABEL[c]}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        category === c && styles.chipActiveText,
+                      ]}
+                    >
+                      {CATEGORY_LABEL[c]}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
             </View>
             <View style={styles.blocksHeader}>
               <Text style={styles.blocksTitle}>Bloky ({blocks.length})</Text>
@@ -861,10 +858,12 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 11, fontWeight: "700", opacity: 0.6, letterSpacing: 1.2 },
   title: { fontSize: 22, fontWeight: "800", marginTop: 2 },
   addBtn: {
-    backgroundColor: "#0F766E",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: "#FFE600",
+    width: 48,
+    height: 48,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: "#000",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -992,26 +991,38 @@ const styles = StyleSheet.create({
   editorContent: { padding: 16, gap: 10 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 8, opacity: 0.8 },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    marginTop: 4,
+    borderWidth: 4,
+    borderRadius: 0,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    marginTop: 6,
+    backgroundColor: "#fff",
+    fontFamily: "SpaceMono-Regular",
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
-  multi: { minHeight: 72, paddingTop: 10, textAlignVertical: "top" },
+  multi: { minHeight: 88, paddingTop: 12, textAlignVertical: "top" },
   row2: { flexDirection: "row", gap: 12 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: "#000",
+    backgroundColor: "#fff",
   },
-  chipActive: { backgroundColor: "#0F766E", borderColor: "#0F766E" },
-  chipText: { fontSize: 13, fontWeight: "600" },
-  chipActiveText: { color: "#fff" },
+  chipActive: { backgroundColor: "#000", borderColor: "#000" },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+    textTransform: "uppercase",
+  },
+  chipActiveText: { color: "#FFE600" },
   blocksHeader: {
     flexDirection: "row",
     alignItems: "center",

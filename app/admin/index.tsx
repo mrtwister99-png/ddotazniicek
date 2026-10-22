@@ -252,15 +252,27 @@ export default function AdminDashboard() {
         <Pressable onPress={logout} style={styles.iconButton}>
           <Ionicons name="log-out-outline" size={24} color={theme.text} />
         </Pressable>
-        <Pressable
-          onPress={() => {
-            setFolderError(null);
-            setIsModalVisible(true);
-          }}
-          style={styles.addButton}
-        >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
-        </Pressable>
+        <View style={{ position: "relative" }}>
+          <View
+            style={{
+              position: "absolute",
+              top: 4,
+              left: 4,
+              width: 48,
+              height: 48,
+              backgroundColor: "#000",
+            }}
+          />
+          <Pressable
+            onPress={() => {
+              setFolderError(null);
+              setIsModalVisible(true);
+            }}
+            style={styles.addButton}
+          >
+            <Ionicons name="add" size={30} color="#000" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
@@ -302,9 +314,23 @@ export default function AdminDashboard() {
                 person.display_name ?? person.username ?? "Bez jména";
               return (
                 <View key={person.id} style={styles.rowWrap}>
-                  <View style={[styles.row, styles.userRow]}>
-                    <Ionicons name="person" size={20} color="#FFFFFF" />
-                    <Text style={[styles.rowText, { color: "#FFFFFF" }]}>
+                  <View
+                    style={[
+                      styles.row,
+                      styles.userRow,
+                      {
+                        backgroundColor: "#fff",
+                        borderWidth: 4,
+                        borderColor: "#000",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 4, height: 4 },
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="person" size={20} color="#000" />
+                    <Text style={[styles.rowText, { color: "#000" }]}>
                       {name}
                     </Text>
                   </View>
@@ -477,11 +503,17 @@ const styles = StyleSheet.create({
   iconButton: { padding: 8 },
   addButton: {
     alignItems: "center",
-    backgroundColor: "#0F766E",
-    borderRadius: 20,
-    height: 40,
+    backgroundColor: "#FFE600",
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: "#000",
+    height: 48,
     justifyContent: "center",
-    width: 40,
+    width: 48,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   list: { paddingHorizontal: 16, paddingBottom: 16, gap: 8 },
   rowWrap: {
@@ -506,7 +538,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
   },
   folderRow: { backgroundColor: "#fff", borderWidth: 4, borderColor: "#000" },
-  userRow: { backgroundColor: "#fff" },
+  userRow: { backgroundColor: "#FFE600", borderWidth: 4, borderColor: "#000" },
   rowText: {
     flex: 1,
     fontSize: 16,

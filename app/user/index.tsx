@@ -177,10 +177,6 @@ export default function UserHomeScreen() {
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>
-          Ahoj{home?.name ? `, ${home.name}` : ""} 👋
-        </Text>
-
         {error ? (
           <View>
             <Text style={styles.error}>{error}</Text>
@@ -207,7 +203,12 @@ export default function UserHomeScreen() {
                     styles.tile,
                     styles.emptyTile,
                     size,
-                    { borderColor: theme.tabIconDefault },
+                    {
+                      borderColor: "#000",
+                      borderWidth: 3,
+                      borderRadius: 0,
+                      borderStyle: "dashed",
+                    },
                   ]}
                 >
                   <Text style={styles.posHint}>{pos}</Text>
@@ -247,7 +248,7 @@ export default function UserHomeScreen() {
                     style={[
                       styles.pointsBadge,
                       {
-                        borderWidth: 2,
+                        borderWidth: 3,
                         borderColor: "#000",
                         borderRadius: 0,
                         backgroundColor: NEO.yellow,
@@ -278,35 +279,34 @@ export default function UserHomeScreen() {
           <ActivityIndicator style={styles.loader} />
         ) : null}
 
-        <View style={styles.bottomRow}>
-          <View style={styles.stats}>
-            <Text style={styles.statsTitle}>stats</Text>
-            {/* R (dokoukané reklamy) je lokální počítadlo na zařízení - zatím 0. */}
-            <Text style={styles.statsLine}>
-              B:{home?.points ?? 0} R:0 D:{home?.doneQuestionnaires ?? 0}
+        {/* BRUTALISM - AHOJ + STATS DOLE JAKO ČTVEREČEK */}
+        <View style={styles.brutalSquareWrap}>
+          <View style={styles.brutalSquareShadow} />
+          <View style={styles.brutalSquare}>
+            <Text style={styles.greeting}>
+              Ahoj{home?.name ? `, ${home.name}` : ""} 👋
             </Text>
-          </View>
-
-          <View
-            accessible
-            accessibilityLabel={lightText}
-            style={styles.lightBox}
-          >
-            <View
-              style={[styles.lightHalo, { backgroundColor: `${lightColor}33` }]}
-            >
-              <View style={[styles.light, { backgroundColor: lightColor }]} />
+            <View style={styles.stats}>
+              <Text style={styles.statsTitle}>STATS</Text>
+              <Text style={styles.statsLine}>
+                B:{home?.points ?? 0} D:{home?.doneQuestionnaires ?? 0}
+              </Text>
             </View>
-            <Text style={styles.lightText}>{lightText}</Text>
-          </View>
-
-          {/* Vyhrazeno pro budoucí delší reklamu. */}
-          <View
-            accessible
-            accessibilityLabel="Delší reklama, zatím nedostupná"
-            style={styles.longAd}
-          >
-            <Text style={styles.longAdText}>Delší reklama</Text>
+            <View
+              accessible
+              accessibilityLabel={lightText}
+              style={styles.lightBox}
+            >
+              <View
+                style={[
+                  styles.lightHalo,
+                  { backgroundColor: `${lightColor}33` },
+                ]}
+              >
+                <View style={[styles.light, { backgroundColor: lightColor }]} />
+              </View>
+              <Text style={styles.lightText}>{lightText}</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -441,7 +441,30 @@ export default function UserHomeScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   content: { alignSelf: "center", maxWidth: 440, padding: 16, width: "100%" },
-  greeting: { fontSize: 24, fontWeight: "700", marginBottom: 16 },
+  greeting: {
+    fontSize: 22,
+    fontWeight: "900",
+    fontFamily: "SpaceMono-Regular",
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  brutalSquareWrap: { position: "relative", marginTop: 24, width: "100%" },
+  brutalSquareShadow: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    right: -6,
+    bottom: -6,
+    backgroundColor: "#000",
+  },
+  brutalSquare: {
+    borderWidth: 4,
+    borderColor: "#000",
+    backgroundColor: "#fff",
+    padding: 16,
+    gap: 12,
+    minHeight: 140,
+  },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
   tile: {
     alignItems: "center",

@@ -69,16 +69,21 @@ export function BrutalButton({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "relative", alignSelf: "flex-start" },
-  shadow: { position: "absolute", top: 5, left: 5, right: -3, bottom: -3 },
+  wrap: { position: "relative", alignSelf: "stretch", width: "100%" },
+  shadow: { position: "absolute", top: 6, left: 6, right: -4, bottom: -4 },
   btn: {
-    borderWidth: 3,
+    borderWidth: 4,
     borderRadius: 0,
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingVertical: 14,
     minWidth: 120,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   text: {
     fontWeight: "900",
